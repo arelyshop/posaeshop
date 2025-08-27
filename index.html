@@ -1238,6 +1238,7 @@
                 try {
                     const saleProducts = JSON.parse(sale['Productos Vendidos (JSON)']);
                     saleProducts.forEach(pInSale => {
+                        // **CORRECCIÓN:** Usar el costo guardado en el JSON de la venta.
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
                         saleCost += cost * pInSale.cantidad;
                     });
@@ -1299,6 +1300,7 @@
                 try {
                     const saleProducts = JSON.parse(sale['Productos Vendidos (JSON)']);
                     saleProducts.forEach(pInSale => {
+                        // **CORRECCIÓN:** Usar el costo guardado en el JSON de la venta.
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
                         saleCost += cost * pInSale.cantidad;
                     });
