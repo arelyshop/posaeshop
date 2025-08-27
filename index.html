@@ -516,8 +516,7 @@
                 fetchProducts(),
                 fetchSales(),
                 loadImageAsPngDataUrl('https://dcdn-us.mitiendanube.com/stores/004/546/736/themes/common/logo-660776128-1736645739-9bb5db1715d3b799cdf782b0f0815d541736645739.webp').then(logo => preloadedLogo = logo),
-                // Usar la URL permanente del QR para los PDFs
-                loadImageAsJpegDataUrl('https://lh3.googleusercontent.com/d/1fv9dO4VZI4-LbEj3klUu0EriSIw82nm0=w800?authuser=0').then(qr => preloadedPdfQr = qr)
+                loadImageAsJpegDataUrl('https://lh3.googleusercontent.com/d/1i08QtanwwFJ4yky2r2_smJL4ivBURTKG=w800?authuser=0').then(qr => preloadedPdfQr = qr)
             ]);
 
             renderInventoryProducts();
