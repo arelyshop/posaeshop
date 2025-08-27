@@ -1,4 +1,4 @@
-import postgres from 'postgres';
+const postgres = require('postgres');
 
 // La URL de la base de datos se obtiene de las variables de entorno de Netlify
 // CORRECCIÓN: Usamos 'NETLIFY_DATABASE_URL' que es el nombre que la integración de Neon crea.
@@ -7,7 +7,7 @@ const sql = postgres(process.env.NETLIFY_DATABASE_URL, {
 });
 
 // Función principal que maneja todas las peticiones
-export async function handler(event) {
+exports.handler = async function(event) {
   const path = event.path.replace('/.netlify/functions/api', '');
   const method = event.httpMethod;
   const body = event.body ? JSON.parse(event.body) : {};
@@ -41,9 +41,7 @@ export async function handler(event) {
     if (path === '/sales' && method === 'POST') {
         const sale = body.data;
         
-        // Iniciar una transacción para asegurar la consistencia de los datos
         const result = await sql.begin(async sql => {
-            // 1. Obtener el último ID de venta para generar el siguiente
             const lastSale = await sql`SELECT "saleId" FROM sales ORDER BY id DESC LIMIT 1`;
             let nextIdNumber = 1;
             if (lastSale.length > 0) {
@@ -54,11 +52,9 @@ export async function handler(event) {
             }
             const newSaleId = `AS${nextIdNumber}`;
 
-            // 2. Insertar la nueva venta
             await sql`INSERT INTO sales ("saleId", "nombreCliente", "contacto", "nitCi", "totalVenta", "productosVendidos")
                        VALUES (${newSaleId}, ${sale.customer.name}, ${sale.customer.contact}, ${sale.customer.id}, ${sale.total}, ${JSON.stringify(sale.items)})`;
             
-            // 3. Actualizar el stock de cada producto vendido
             for (const item of sale.items) {
                 await sql`UPDATE products SET cantidad = cantidad - ${item.cantidad} WHERE sku = ${item.SKU}`;
             }
@@ -72,19 +68,16 @@ export async function handler(event) {
         const saleId = body.data.saleId;
 
         await sql.begin(async sql => {
-            // 1. Obtener los detalles de la venta a anular
             const saleToAnnul = await sql`SELECT "productosVendidos" FROM sales WHERE "saleId" = ${saleId} AND "estado" != 'Anulada'`;
             if (saleToAnnul.length === 0) {
                 throw new Error('Venta no encontrada o ya ha sido anulada.');
             }
             const items = saleToAnnul[0].productosVendidos;
 
-            // 2. Restaurar el stock de cada producto
             for (const item of items) {
                 await sql`UPDATE products SET cantidad = cantidad + ${item.cantidad} WHERE sku = ${item.SKU}`;
             }
 
-            // 3. Actualizar el estado de la venta a 'Anulada'
             await sql`UPDATE sales SET estado = 'Anulada' WHERE "saleId" = ${saleId}`;
         });
 
@@ -93,12 +86,10 @@ export async function handler(event) {
     
     // --- RUTA DE CONFIGURACIÓN ---
     if (path === '/config' && method === 'GET') {
-        // La URL del QR ahora se gestiona como una variable de entorno en Netlify
         const qrUrl = process.env.QR_CODE_URL || 'https://placehold.co/192x192/e2e8f0/94a3b8?text=QR+NO+CONFIGURADO';
         return { statusCode: 200, body: JSON.stringify({ qrUrl }) };
     }
 
-    // Si no se encuentra la ruta
     return { statusCode: 404, body: 'Ruta no encontrada' };
 
   } catch (error) {
