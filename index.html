@@ -647,17 +647,8 @@
                 const response = await robustFetch(`${API_BASE_URL}/sales`);
                 const result = await response.json();
                 if (result.status === 'success') {
-                    sales = result.data.map(sale => ({
-                        ...sale,
-                        'Nro. Venta': sale.saleId,
-                        'Fecha de Venta': new Date(sale.fechaVenta).toLocaleDateString('es-BO'),
-                        'Nombre Cliente': sale.nombreCliente,
-                        'Contacto': sale.contacto,
-                        'NIT/CI': sale.nitCi,
-                        'Total Venta': sale.totalVenta,
-                        'productosVendidos': sale.productosVendidos, // Keep as object
-                        'Estado': sale.estado
-                    }));
+                    // **CORRECCIÓN:** No es necesario re-mapear los datos aquí. Usaremos los nombres de la DB directamente.
+                    sales = result.data;
                 }
             } catch (error) {
                 console.error("Fallo al cargar las ventas:", error);
@@ -667,8 +658,8 @@
         
         function displayNextSaleId() {
             let nextId = "AS1";
-            if (sales.length > 0 && sales[0]['Nro. Venta']) {
-                const lastSaleId = sales[0]['Nro. Venta'];
+            if (sales.length > 0 && sales[0].saleId) {
+                const lastSaleId = sales[0].saleId;
                 const lastIdNumber = parseInt(lastSaleId.substring(2));
                 if (!isNaN(lastIdNumber)) {
                     nextId = 'AS' + (lastIdNumber + 1);
@@ -1013,9 +1004,9 @@
             container.innerHTML = '';
             
             const filteredSales = sales.filter(s => 
-                s['Nro. Venta']?.toLowerCase().includes(searchTerm) ||
-                s['Nombre Cliente']?.toLowerCase().includes(searchTerm) ||
-                s['Contacto']?.toString().toLowerCase().includes(searchTerm)
+                s.saleId?.toLowerCase().includes(searchTerm) ||
+                s.nombreCliente?.toLowerCase().includes(searchTerm) ||
+                s.contacto?.toString().toLowerCase().includes(searchTerm)
             );
 
             if (filteredSales.length === 0) {
@@ -1024,7 +1015,7 @@
             }
 
             filteredSales.forEach(sale => {
-                const isAnnulled = sale['Estado'] === 'Anulada';
+                const isAnnulled = sale.estado === 'Anulada';
                 const statusText = isAnnulled ? 'Anulada' : 'Completada';
                 const statusColor = isAnnulled ? 'bg-red-500 text-white' : 'bg-green-500 text-white';
                 const card = document.createElement('div');
@@ -1040,20 +1031,20 @@
                 } catch(e) { productsHtml += '<li>Error al leer productos</li>'; }
                 productsHtml += '</ul>';
                 
-                const totalVenta = sale['Total Venta'] !== undefined ? parseFloat(sale['Total Venta']).toFixed(2) : 'N/A';
+                const totalVenta = sale.totalVenta !== undefined ? parseFloat(sale.totalVenta).toFixed(2) : 'N/A';
                 
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
-                            <p class="font-bold text-lg">Venta ${sale['Nro. Venta']}</p>
-                            <p class="text-sm text-gray-600">${sale['Fecha de Venta']} - ${sale['Nombre Cliente']} (${sale['Contacto'] || 'N/A'})</p>
+                            <p class="font-bold text-lg">Venta ${sale.saleId}</p>
+                            <p class="text-sm text-gray-600">${new Date(sale.fechaVenta).toLocaleDateString('es-BO')} - ${sale.nombreCliente} (${sale.contacto || 'N/A'})</p>
                             <p class="font-semibold text-blue-600">Total: Bs ${totalVenta}</p>
                         </div>
                         <div class="text-right">
                              <span class="font-semibold text-sm px-2 py-1 rounded-lg ${statusColor}">${statusText}</span>
                              <div class="mt-2 flex space-x-2 justify-end">
-                                <button onclick="reprintSale('${sale['Nro. Venta']}')" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Reimprimir</button>
-                                <button onclick="openAnnulConfirmModal('${sale['Nro. Venta']}')" class="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 disabled:bg-gray-400" ${isAnnulled ? 'disabled' : ''}>Anular</button>
+                                <button onclick="reprintSale('${sale.saleId}')" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Reimprimir</button>
+                                <button onclick="openAnnulConfirmModal('${sale.saleId}')" class="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 disabled:bg-gray-400" ${isAnnulled ? 'disabled' : ''}>Anular</button>
                              </div>
                         </div>
                     </div>
@@ -1064,7 +1055,7 @@
         }
 
         function reprintSale(saleId) {
-            const saleToReprint = sales.find(s => s['Nro. Venta'] === saleId);
+            const saleToReprint = sales.find(s => s.saleId === saleId);
             if (!saleToReprint) {
                 showNotification("Venta no encontrada para reimprimir.", 'error');
                 return;
@@ -1073,12 +1064,12 @@
             try {
                 const saleData = {
                     customer: {
-                        name: saleToReprint['Nombre Cliente'],
-                        contact: saleToReprint['Contacto'],
-                        id: saleToReprint['NIT/CI']
+                        name: saleToReprint.nombreCliente,
+                        contact: saleToReprint.contacto,
+                        id: saleToReprint.nitCi
                     },
                     items: saleToReprint.productosVendidos,
-                    total: parseFloat(saleToReprint['Total Venta'])
+                    total: parseFloat(saleToReprint.totalVenta)
                 };
                 generateSalePDF(saleId, saleData);
             } catch (error) {
@@ -1222,7 +1213,7 @@
                 return date;
             };
 
-            let filteredSales = sales.filter(s => s['Estado'] !== 'Anulada');
+            let filteredSales = sales.filter(s => s.estado !== 'Anulada');
 
             if (startDate && endDate) {
                 const start = new Date(startDate + 'T00:00:00.000Z');
@@ -1242,18 +1233,18 @@
                         saleCost += cost * pInSale.cantidad;
                     });
                 } catch(e) { 
-                    console.error("Error al procesar productos para la venta:", sale['Nro. Venta'], e);
+                    console.error("Error al procesar productos para la venta:", sale.saleId, e);
                 }
 
-                const saleTotal = parseFloat(sale['Total Venta']) || 0;
+                const saleTotal = parseFloat(sale.totalVenta) || 0;
                 const profit = saleTotal - saleCost;
                 totalSales += saleTotal;
                 totalCost += saleCost;
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="px-4 py-3 text-sm text-gray-800">${sale['Nro. Venta']}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">${sale['Fecha de Venta']}</td>
+                    <td class="px-4 py-3 text-sm text-gray-800">${sale.saleId}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${new Date(sale.fechaVenta).toLocaleDateString('es-BO')}</td>
                     <td class="px-4 py-3 text-sm text-right font-medium">Bs ${saleTotal.toFixed(2)}</td>
                     <td class="px-4 py-3 text-sm text-right text-red-600">Bs ${saleCost.toFixed(2)}</td>
                     <td class="px-4 py-3 text-sm text-right font-bold text-green-600">Bs ${profit.toFixed(2)}</td>
@@ -1280,7 +1271,7 @@
                 return date;
             };
 
-            let filteredSales = sales.filter(s => s['Estado'] !== 'Anulada');
+            let filteredSales = sales.filter(s => s.estado !== 'Anulada');
             let dateTitle = "General";
 
             if (startDate && endDate) {
@@ -1304,14 +1295,14 @@
                     });
                 } catch(e) {}
                 
-                const saleTotal = parseFloat(sale['Total Venta']) || 0;
+                const saleTotal = parseFloat(sale.totalVenta) || 0;
                 const profit = saleTotal - saleCost;
                 totalSales += saleTotal;
                 totalCost += saleCost;
                 
                 return [
-                    sale['Nro. Venta'],
-                    sale['Fecha de Venta'],
+                    sale.saleId,
+                    new Date(sale.fechaVenta).toLocaleDateString('es-BO'),
                     `Bs ${saleTotal.toFixed(2)}`,
                     `Bs ${saleCost.toFixed(2)}`,
                     `Bs ${profit.toFixed(2)}`
