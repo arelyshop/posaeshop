@@ -655,7 +655,7 @@
                         'Contacto': sale.contacto,
                         'NIT/CI': sale.nitCi,
                         'Total Venta': sale.totalVenta,
-                        'Productos Vendidos (JSON)': JSON.stringify(sale.productosVendidos),
+                        'productosVendidos': sale.productosVendidos, // Keep as object
                         'Estado': sale.estado
                     }));
                 }
@@ -1032,7 +1032,7 @@
                 
                 let productsHtml = '<ul>';
                 try {
-                    const saleProducts = JSON.parse(sale['Productos Vendidos (JSON)']);
+                    const saleProducts = sale.productosVendidos;
                     saleProducts.forEach(p => {
                         const price = p.precio !== undefined ? parseFloat(p.precio).toFixed(2) : 'N/A';
                         productsHtml += `<li class="text-xs">${p.cantidad} x ${p.Nombre} @ Bs ${price}</li>`;
@@ -1077,7 +1077,7 @@
                         contact: saleToReprint['Contacto'],
                         id: saleToReprint['NIT/CI']
                     },
-                    items: JSON.parse(saleToReprint['Productos Vendidos (JSON)']),
+                    items: saleToReprint.productosVendidos,
                     total: parseFloat(saleToReprint['Total Venta'])
                 };
                 generateSalePDF(saleId, saleData);
@@ -1236,9 +1236,8 @@
             filteredSales.forEach(sale => {
                 let saleCost = 0;
                 try {
-                    const saleProducts = JSON.parse(sale['Productos Vendidos (JSON)']);
+                    const saleProducts = sale.productosVendidos;
                     saleProducts.forEach(pInSale => {
-                        // **CORRECCIÓN:** Usar el costo guardado en el JSON de la venta.
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
                         saleCost += cost * pInSale.cantidad;
                     });
@@ -1298,9 +1297,8 @@
             const reportRows = filteredSales.map(sale => {
                 let saleCost = 0;
                 try {
-                    const saleProducts = JSON.parse(sale['Productos Vendidos (JSON)']);
+                    const saleProducts = sale.productosVendidos;
                     saleProducts.forEach(pInSale => {
-                        // **CORRECCIÓN:** Usar el costo guardado en el JSON de la venta.
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
                         saleCost += cost * pInSale.cantidad;
                     });
