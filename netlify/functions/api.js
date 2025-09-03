@@ -34,13 +34,15 @@ exports.handler = async (event) => {
     if (resource === 'products') {
       // OBTENER TODOS LOS PRODUCTOS
       if (event.httpMethod === 'GET') {
-        const products = await sql`SELECT * FROM products ORDER BY nombre ASC`;
+        const products = await sql`
+            SELECT id, nombre, sku, "precioVenta", "precioCompra", "precioMayoreo", cantidad, "codigoBarras", "urlFoto1" 
+            FROM products ORDER BY nombre ASC`;
         return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', data: products }) };
       }
       // AÑADIR UN NUEVO PRODUCTO
       if (event.httpMethod === 'POST') {
         const { data } = JSON.parse(event.body);
-        await sql`INSERT INTO products (nombre, sku, precioVenta, precioCompra, precioMayoreo, cantidad, codigoBarras, urlFoto1) 
+        await sql`INSERT INTO products (nombre, sku, "precioVenta", "precioCompra", "precioMayoreo", cantidad, "codigoBarras", "urlFoto1") 
                    VALUES (${data.nombre}, ${data.sku}, ${data.precioVenta}, ${data.precioCompra}, ${data.precioMayoreo}, ${data.cantidad}, ${data.codigoBarras}, ${data.urlFoto1})`;
         return { statusCode: 201, headers, body: JSON.stringify({ status: 'success', message: 'Producto añadido' }) };
       }
@@ -48,8 +50,8 @@ exports.handler = async (event) => {
       if (event.httpMethod === 'PUT') {
         const { data } = JSON.parse(event.body);
         await sql`UPDATE products SET 
-                   nombre = ${data.nombre}, sku = ${data.sku}, precioVenta = ${data.precioVenta}, precioCompra = ${data.precioCompra}, 
-                   precioMayoreo = ${data.precioMayoreo}, cantidad = ${data.cantidad}, codigoBarras = ${data.codigoBarras}, urlFoto1 = ${data.urlFoto1} 
+                   nombre = ${data.nombre}, sku = ${data.sku}, "precioVenta" = ${data.precioVenta}, "precioCompra" = ${data.precioCompra}, 
+                   "precioMayoreo" = ${data.precioMayoreo}, cantidad = ${data.cantidad}, "codigoBarras" = ${data.codigoBarras}, "urlFoto1" = ${data.urlFoto1} 
                    WHERE sku = ${data.originalSku}`;
         return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', message: 'Producto actualizado' }) };
       }
@@ -63,22 +65,18 @@ exports.handler = async (event) => {
         const { saleId } = data;
 
         await sql.begin(async (sql) => {
-          // Obtiene los productos de la venta a anular.
-          const saleToAnnul = await sql`SELECT productosVendidos FROM sales WHERE saleId = ${saleId}`;
+          const saleToAnnul = await sql`SELECT "productosVendidos" FROM sales WHERE "saleId" = ${saleId}`;
           if (saleToAnnul.length === 0) throw new Error('Venta no encontrada');
           
-          // **CORRECCIÓN:** Asegura que `productosVendidos` sea un objeto/array antes de usarlo.
-          const productsSold = typeof saleToAnnul[0].productosvendidos === 'string' 
-              ? JSON.parse(saleToAnnul[0].productosvendidos) 
-              : saleToAnnul[0].productosvendidos;
+          const productsSold = typeof saleToAnnul[0].productosVendidos === 'string' 
+              ? JSON.parse(saleToAnnul[0].productosVendidos) 
+              : saleToAnnul[0].productosVendidos;
 
-          // Restaura el stock de cada producto.
           for (const item of productsSold) {
             await sql`UPDATE products SET cantidad = cantidad + ${item.cantidad} WHERE sku = ${item.SKU}`;
           }
 
-          // Marca la venta como anulada.
-          await sql`UPDATE sales SET estado = 'Anulada' WHERE saleId = ${saleId}`;
+          await sql`UPDATE sales SET estado = 'Anulada' WHERE "saleId" = ${saleId}`;
         });
 
         return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', message: 'Venta anulada y stock restaurado' }) };
@@ -86,7 +84,7 @@ exports.handler = async (event) => {
 
       // OBTENER TODAS LAS VENTAS
       if (event.httpMethod === 'GET') {
-        const sales = await sql`SELECT * FROM sales ORDER BY fechaVenta DESC`;
+        const sales = await sql`SELECT id, "saleId", "fechaVenta", "nombreCliente", contacto, "nitCi", "totalVenta", "productosVendidos", estado FROM sales ORDER BY "fechaVenta" DESC`;
         return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', data: sales }) };
       }
       // REGISTRAR UNA NUEVA VENTA
@@ -95,18 +93,16 @@ exports.handler = async (event) => {
         const { customer, items, total } = data;
         
         let newSaleId = 'AS1';
-        const lastSale = await sql`SELECT saleId FROM sales ORDER BY id DESC LIMIT 1`;
+        const lastSale = await sql`SELECT "saleId" FROM sales ORDER BY id DESC LIMIT 1`;
         if (lastSale.length > 0) {
-          const lastIdNumber = parseInt(lastSale[0].saleid.substring(2));
+          const lastIdNumber = parseInt(lastSale[0].saleId.substring(2));
           newSaleId = 'AS' + (lastIdNumber + 1);
         }
 
         await sql.begin(async (sql) => {
-          // Inserta la nueva venta en la tabla de ventas.
-          await sql`INSERT INTO sales (saleId, nombreCliente, contacto, nitCi, totalVenta, productosVendidos, estado) 
+          await sql`INSERT INTO sales ("saleId", "nombreCliente", contacto, "nitCi", "totalVenta", "productosVendidos", estado) 
                      VALUES (${newSaleId}, ${customer.name}, ${customer.contact}, ${customer.id}, ${total}, ${JSON.stringify(items)}, 'Completada')`;
           
-          // Actualiza el stock de cada producto vendido.
           for (const item of items) {
             await sql`UPDATE products SET cantidad = cantidad - ${item.cantidad} WHERE sku = ${item.SKU}`;
           }
@@ -129,3 +125,4 @@ exports.handler = async (event) => {
     };
   }
 };
+
