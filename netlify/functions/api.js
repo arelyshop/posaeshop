@@ -1,99 +1,131 @@
+// Carga la librería de postgres y dotenv.
 const postgres = require('postgres');
+require('dotenv').config();
 
-// La URL de la base de datos se obtiene de las variables de entorno de Netlify
-// CORRECCIÓN: Usamos 'NETLIFY_DATABASE_URL' que es el nombre que la integración de Neon crea.
-const sql = postgres(process.env.NETLIFY_DATABASE_URL, {
-  ssl: 'require',
-});
+// Obtiene la URL de la base de datos desde las variables de entorno de Netlify.
+const sql = postgres(process.env.NETLIFY_DATABASE_URL, { ssl: 'require' });
 
-// Función principal que maneja todas las peticiones
-exports.handler = async function(event) {
-  const path = event.path.replace('/.netlify/functions/api', '');
-  const method = event.httpMethod;
-  const body = event.body ? JSON.parse(event.body) : {};
+// Define la función principal que Netlify ejecutará.
+exports.handler = async (event) => {
+  // Configura los encabezados para permitir el acceso desde cualquier origen (CORS).
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Content-Type': 'application/json',
+  };
+
+  // Maneja las solicitudes OPTIONS de pre-vuelo para CORS.
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers,
+      body: '',
+    };
+  }
+
+  // Divide la ruta de la solicitud para determinar la acción a realizar.
+  const pathParts = event.path.replace('/.netlify/functions/api', '').split('/');
+  const resource = pathParts[1]; // El recurso principal (ej: 'products' o 'sales').
+  const action = pathParts[2]; // Acción específica (ej: 'annul').
 
   try {
-    // --- RUTAS DE PRODUCTOS ---
-    if (path === '/products' && method === 'GET') {
-      const products = await sql`SELECT * FROM products ORDER BY nombre ASC`;
-      return { statusCode: 200, body: JSON.stringify({ status: 'success', data: products }) };
-    }
-    if (path === '/products' && method === 'POST') {
-      const p = body.data;
-      await sql`INSERT INTO products ("nombre", "sku", "precioVenta", "precioCompra", "precioMayoreo", "cantidad", "codigoBarras", "urlFoto1")
-                 VALUES (${p.nombre}, ${p.sku || null}, ${p.precioVenta}, ${p.precioCompra || null}, ${p.precioMayoreo || null}, ${p.cantidad}, ${p.codigoBarras || null}, ${p.urlFoto1 || null})`;
-      return { statusCode: 200, body: JSON.stringify({ status: 'success', message: 'Producto añadido' }) };
-    }
-     if (path === '/products' && method === 'PUT') {
-      const p = body.data;
-      await sql`UPDATE products SET
-                  "nombre" = ${p.nombre}, "sku" = ${p.sku}, "precioVenta" = ${p.precioVenta}, "precioCompra" = ${p.precioCompra},
-                  "precioMayoreo" = ${p.precioMayoreo}, "cantidad" = ${p.cantidad}, "codigoBarras" = ${p.codigoBarras}, "urlFoto1" = ${p.urlFoto1}
-                 WHERE "sku" = ${p.originalSku}`;
-      return { statusCode: 200, body: JSON.stringify({ status: 'success', message: 'Producto actualizado' }) };
+    // --- MANEJO DE PRODUCTOS ---
+    if (resource === 'products') {
+      // OBTENER TODOS LOS PRODUCTOS
+      if (event.httpMethod === 'GET') {
+        const products = await sql`SELECT * FROM products ORDER BY nombre ASC`;
+        return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', data: products }) };
+      }
+      // AÑADIR UN NUEVO PRODUCTO
+      if (event.httpMethod === 'POST') {
+        const { data } = JSON.parse(event.body);
+        await sql`INSERT INTO products (nombre, sku, precioVenta, precioCompra, precioMayoreo, cantidad, codigoBarras, urlFoto1) 
+                   VALUES (${data.nombre}, ${data.sku}, ${data.precioVenta}, ${data.precioCompra}, ${data.precioMayoreo}, ${data.cantidad}, ${data.codigoBarras}, ${data.urlFoto1})`;
+        return { statusCode: 201, headers, body: JSON.stringify({ status: 'success', message: 'Producto añadido' }) };
+      }
+      // ACTUALIZAR UN PRODUCTO
+      if (event.httpMethod === 'PUT') {
+        const { data } = JSON.parse(event.body);
+        await sql`UPDATE products SET 
+                   nombre = ${data.nombre}, sku = ${data.sku}, precioVenta = ${data.precioVenta}, precioCompra = ${data.precioCompra}, 
+                   precioMayoreo = ${data.precioMayoreo}, cantidad = ${data.cantidad}, codigoBarras = ${data.codigoBarras}, urlFoto1 = ${data.urlFoto1} 
+                   WHERE sku = ${data.originalSku}`;
+        return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', message: 'Producto actualizado' }) };
+      }
     }
 
-    // --- RUTAS DE VENTAS ---
-    if (path === '/sales' && method === 'GET') {
-      const sales = await sql`SELECT * FROM sales ORDER BY "fechaVenta" DESC`;
-      return { statusCode: 200, body: JSON.stringify({ status: 'success', data: sales }) };
-    }
-    if (path === '/sales' && method === 'POST') {
-        const sale = body.data;
+    // --- MANEJO DE VENTAS ---
+    if (resource === 'sales') {
+      // ANULAR UNA VENTA
+      if (action === 'annul' && event.httpMethod === 'PUT') {
+        const { data } = JSON.parse(event.body);
+        const { saleId } = data;
+
+        await sql.begin(async (sql) => {
+          // Obtiene los productos de la venta a anular.
+          const saleToAnnul = await sql`SELECT productosVendidos FROM sales WHERE saleId = ${saleId}`;
+          if (saleToAnnul.length === 0) throw new Error('Venta no encontrada');
+          
+          // **CORRECCIÓN:** Asegura que `productosVendidos` sea un objeto/array antes de usarlo.
+          const productsSold = typeof saleToAnnul[0].productosvendidos === 'string' 
+              ? JSON.parse(saleToAnnul[0].productosvendidos) 
+              : saleToAnnul[0].productosvendidos;
+
+          // Restaura el stock de cada producto.
+          for (const item of productsSold) {
+            await sql`UPDATE products SET cantidad = cantidad + ${item.cantidad} WHERE sku = ${item.SKU}`;
+          }
+
+          // Marca la venta como anulada.
+          await sql`UPDATE sales SET estado = 'Anulada' WHERE saleId = ${saleId}`;
+        });
+
+        return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', message: 'Venta anulada y stock restaurado' }) };
+      }
+
+      // OBTENER TODAS LAS VENTAS
+      if (event.httpMethod === 'GET') {
+        const sales = await sql`SELECT * FROM sales ORDER BY fechaVenta DESC`;
+        return { statusCode: 200, headers, body: JSON.stringify({ status: 'success', data: sales }) };
+      }
+      // REGISTRAR UNA NUEVA VENTA
+      if (event.httpMethod === 'POST') {
+        const { data } = JSON.parse(event.body);
+        const { customer, items, total } = data;
         
-        const result = await sql.begin(async sql => {
-            const lastSale = await sql`SELECT "saleId" FROM sales ORDER BY id DESC LIMIT 1`;
-            let nextIdNumber = 1;
-            if (lastSale.length > 0) {
-                const lastIdNumber = parseInt(lastSale[0].saleId.substring(2));
-                if (!isNaN(lastIdNumber)) {
-                    nextIdNumber = lastIdNumber + 1;
-                }
-            }
-            const newSaleId = `AS${nextIdNumber}`;
+        let newSaleId = 'AS1';
+        const lastSale = await sql`SELECT saleId FROM sales ORDER BY id DESC LIMIT 1`;
+        if (lastSale.length > 0) {
+          const lastIdNumber = parseInt(lastSale[0].saleid.substring(2));
+          newSaleId = 'AS' + (lastIdNumber + 1);
+        }
 
-            await sql`INSERT INTO sales ("saleId", "nombreCliente", "contacto", "nitCi", "totalVenta", "productosVendidos")
-                       VALUES (${newSaleId}, ${sale.customer.name}, ${sale.customer.contact}, ${sale.customer.id}, ${sale.total}, ${JSON.stringify(sale.items)})`;
-            
-            for (const item of sale.items) {
-                await sql`UPDATE products SET cantidad = cantidad - ${item.cantidad} WHERE sku = ${item.SKU}`;
-            }
-            
-            return { saleId: newSaleId };
+        await sql.begin(async (sql) => {
+          // Inserta la nueva venta en la tabla de ventas.
+          await sql`INSERT INTO sales (saleId, nombreCliente, contacto, nitCi, totalVenta, productosVendidos, estado) 
+                     VALUES (${newSaleId}, ${customer.name}, ${customer.contact}, ${customer.id}, ${total}, ${JSON.stringify(items)}, 'Completada')`;
+          
+          // Actualiza el stock de cada producto vendido.
+          for (const item of items) {
+            await sql`UPDATE products SET cantidad = cantidad - ${item.cantidad} WHERE sku = ${item.SKU}`;
+          }
         });
 
-        return { statusCode: 200, body: JSON.stringify({ status: 'success', saleId: result.saleId }) };
-    }
-    if (path.startsWith('/sales/annul') && method === 'PUT') {
-        const saleId = body.data.saleId;
-
-        await sql.begin(async sql => {
-            const saleToAnnul = await sql`SELECT "productosVendidos" FROM sales WHERE "saleId" = ${saleId} AND "estado" != 'Anulada'`;
-            if (saleToAnnul.length === 0) {
-                throw new Error('Venta no encontrada o ya ha sido anulada.');
-            }
-            const items = saleToAnnul[0].productosVendidos;
-
-            for (const item of items) {
-                await sql`UPDATE products SET cantidad = cantidad + ${item.cantidad} WHERE sku = ${item.SKU}`;
-            }
-
-            await sql`UPDATE sales SET estado = 'Anulada' WHERE "saleId" = ${saleId}`;
-        });
-
-        return { statusCode: 200, body: JSON.stringify({ status: 'success', message: `Venta ${saleId} anulada con éxito.` }) };
+        return { statusCode: 201, headers, body: JSON.stringify({ status: 'success', message: 'Venta registrada', saleId: newSaleId }) };
+      }
     }
     
-    // --- RUTA DE CONFIGURACIÓN ---
-    if (path === '/config' && method === 'GET') {
-        const qrUrl = process.env.QR_CODE_URL || 'https://placehold.co/192x192/e2e8f0/94a3b8?text=QR+NO+CONFIGURADO';
-        return { statusCode: 200, body: JSON.stringify({ qrUrl }) };
-    }
-
-    return { statusCode: 404, body: 'Ruta no encontrada' };
+    // Si no se encuentra la ruta, devuelve un error 404.
+    return { statusCode: 404, headers, body: JSON.stringify({ status: 'error', message: 'Ruta no encontrada' }) };
 
   } catch (error) {
-    console.error('Error en la función API:', error);
-    return { statusCode: 500, body: JSON.stringify({ status: 'error', message: error.message }) };
+    console.error('Error en la API:', error);
+    // Devuelve un error 500 si algo sale mal.
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ status: 'error', message: error.message || 'Error interno del servidor' }),
+    };
   }
-}
+};
