@@ -13,34 +13,111 @@
     <!-- Barcode Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        html { scroll-behavior: smooth; }
+        html {
+            overflow-y: scroll;
+        }
         body { font-family: 'Inter', sans-serif; }
         .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3b82f6; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .tab-button { display: flex; flex-direction: column; align-items: center; padding: 0.5rem 0.25rem; font-size: 0.75rem; line-height: 1rem; text-align: center; flex-grow: 1; }
-        .tab-button svg { width: 24px; height: 24px; margin-bottom: 0.25rem; }
-        @media (min-width: 640px) {
-            .tab-button { flex-direction: row; font-size: 0.875rem; line-height: 1.25rem; padding: 0.5rem 0.75rem; flex-grow: 0; }
-            .tab-button svg { margin-bottom: 0; margin-right: 0.5rem; }
+        
+        /* Tab Styling */
+        .tab-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 0.25rem;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            text-align: center;
+            flex-grow: 1;
         }
+        .tab-button svg {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 0.25rem;
+        }
+
+        @media (min-width: 640px) {
+            .tab-button {
+                flex-direction: row;
+                font-size: 0.875rem;
+                line-height: 1.25rem;
+                padding: 0.5rem 0.75rem;
+                flex-grow: 0;
+            }
+            .tab-button svg {
+                margin-bottom: 0;
+                margin-right: 0.5rem;
+            }
+        }
+
         .tab-inactive { border-color: transparent; color: #6b7280; }
         .tab-inactive svg { fill: #6b7280; }
+
         #tab-pos.tab-active { border-color: #2563eb; color: #2563eb; font-weight: 600; }
         #tab-pos.tab-active svg { fill: #2563eb; }
+
         #tab-inventory.tab-active { border-color: #f97316; color: #f97316; font-weight: 600; }
         #tab-inventory.tab-active svg { fill: #f97316; }
+
         #tab-sales-query.tab-active { border-color: #9333ea; color: #9333ea; font-weight: 600; }
         #tab-sales-query.tab-active svg { fill: #9333ea; }
+
         #tab-reports.tab-active { border-color: #16a34a; color: #16a34a; font-weight: 600; }
         #tab-reports.tab-active svg { fill: #16a34a; }
+
         .tab-content { display: none; }
         .copy-btn { background: none; border: none; cursor: pointer; margin-left: 8px; color: #6b7280; }
         .copy-btn:hover { color: #2c3c53; }
-        #scanner-modal #reader { width: 100%; border-radius: 0.5rem; overflow: hidden; }
-        #notification-banner { transition: transform 0.5s ease-in-out; transform: translateY(-100%); }
+        #scanner-modal #reader {
+            width: 100%;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        /* Notification Banner */
+        #notification-banner {
+            transition: transform 0.5s ease-in-out;
+            transform: translateY(-100%);
+        }
     </style>
 </head>
 <body class="bg-gray-100">
+
+    <!-- Login Screen -->
+    <div id="login-container" class="hidden min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-900">
+        <div class="max-w-md w-full space-y-8 p-10 rounded-xl shadow-lg" style="background-color: #202c34;">
+            <div>
+                <img class="mx-auto h-12 w-auto" src="https://dcdn-us.mitiendanube.com/stores/004/546/736/themes/common/logo-660776128-1736645739-9bb5db1715d3b799cdf782b0f0815d541736645739.webp?0" alt="ArelyShop">
+                <div class="flex justify-center mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#e3e3e3"><path d="M480-120v-80h280v-560H480v-80h280q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H480Zm-80-160-55-58 102-102H120v-80h327L345-622l55-58 200 200-200 200Z"/></svg>
+                </div>
+                <h2 class="mt-4 text-center text-3xl font-extrabold text-gray-100">
+                    Iniciar sesión
+                </h2>
+            </div>
+            <form id="login-form" class="mt-8 space-y-6">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <label for="username" class="sr-only">Usuario</label>
+                        <input id="username" name="username" type="text" autocomplete="username" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-400 text-white bg-gray-700 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Usuario">
+                    </div>
+                    <div>
+                        <label for="password" class="sr-only">Contraseña</label>
+                        <input id="password" name="password" type="password" autocomplete="current-password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-400 text-white bg-gray-700 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Contraseña">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" id="login-button" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <span id="login-button-text">Ingresar</span>
+                        <div id="login-loader" class="loader hidden"></div>
+                    </button>
+                </div>
+                <p id="error-message" class="mt-2 text-center text-sm text-red-600"></p>
+            </form>
+        </div>
+    </div>
+
 
     <!-- Notification Banner -->
     <div id="notification-banner" class="fixed top-0 left-0 right-0 p-4 text-white text-center z-50">
@@ -48,42 +125,12 @@
     </div>
 
     <!-- Preloader -->
-    <div id="preloader" class="fixed inset-0 bg-gray-800 bg-opacity-95 flex flex-col items-center justify-center z-50">
+    <div id="preloader" class="fixed inset-0 bg-gray-800 flex flex-col items-center justify-center z-50">
         <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#e3e3e3"><path d="M480-80q-82 0-155-31.5t-127.5-86Q143-252 111.5-325T80-480q0-83 31.5-155.5t86-127Q252-817 325-848.5T480-880q17 0 28.5 11.5T520-840q0 17-11.5 28.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160q133 0 226.5-93.5T800-480q0-17 11.5-28.5T840-520q17 0 28.5 11.5T880-480q0 82-31.5 155t-86 127.5q-54.5 54.5-127 86T480-80Z"/></svg>
-        <p class="text-white text-lg mt-4">Cargando...</p>
+        <p class="text-white text-lg mt-4">Cargando datos...</p>
     </div>
 
-    <!-- Login Container -->
-    <div id="login-container" class="hidden items-center justify-center min-h-screen bg-gray-200 px-4">
-        <div class="w-full max-w-sm p-8 bg-white rounded-2xl shadow-xl">
-            <div class="text-center mb-6">
-                <div class="bg-slate-900 rounded-lg p-4 inline-block mb-4">
-                    <img src="https://dcdn-us.mitiendanube.com/stores/004/546/736/themes/common/logo-660776128-1736645739-9bb5db1715d3b799cdf782b0f0815d541736645739.webp?0" alt="Logo ArelyShop" class="h-12" onerror="this.onerror=null; this.src='https://placehold.co/200x50/0f172a/ffffff?text=ArelyShop';">
-                </div>
-                 <div class="flex justify-center mb-4">
-                   <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#1e293b"><path d="M480-120v-80h280v-560H480v-80h280q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H480Zm-80-160-55-58 102-102H120v-80h327L345-622l55-58 200 200-200 200Z"></path></svg>
-                </div>
-                <h1 class="text-2xl font-bold text-gray-800">Iniciar Sesión</h1>
-            </div>
-            <form id="login-form">
-                <div class="mb-4">
-                    <label for="username" class="block text-sm font-medium text-gray-600 mb-1">Usuario</label>
-                    <input type="text" id="username" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div class="mb-6">
-                    <label for="password" class="block text-sm font-medium text-gray-600 mb-1">Contraseña</label>
-                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <button type="submit" class="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center">
-                    <span id="login-button-text">Ingresar</span>
-                    <div id="login-loader" class="loader hidden"></div>
-                </button>
-                <p id="login-error" class="text-sm text-red-500 text-center mt-4 h-5"></p>
-            </form>
-        </div>
-    </div>
-
-    <!-- App Container (Hidden by default) -->
+    <!-- App Container -->
     <div id="app-container" class="hidden flex-col min-h-screen">
         <header class="bg-gray-800 text-white shadow-md">
             <div class="container mx-auto p-4 flex justify-between items-center">
@@ -92,10 +139,13 @@
                     <h1 class="text-xl font-bold hidden sm:block">Sistema de Gestión</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span id="user-fullname" class="text-sm"></span>
-                    <button id="logout-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#FFFFFF"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h280v80H200Zm440-160-55-58 102-102H360v-80h327L585-622l55-58 200 200-200 200Z"/></svg>
-                        <span class="hidden sm:block">Salir</span>
+                    <div id="user-info" class="text-right">
+                         <p class="font-semibold text-sm" id="user-fullname"></p>
+                         <p class="text-xs text-gray-400" id="user-role"></p>
+                    </div>
+                    <button id="logout-button" class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 text-sm flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="#FFFFFF" class="mr-2"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h280v80H200Zm440-160-55-58 102-102H360v-80h327L585-622l55-58 200 200-200 200Z"/></svg>
+                        Salir
                     </button>
                 </div>
             </div>
@@ -140,6 +190,7 @@
                                 <div class="text-right">
                                     <h3 class="font-bold text-lg">Nota de Venta</h3>
                                     <p class="text-sm">Nr: <span id="current-sale-id">--</span></p>
+                                    <p class="text-sm">Fecha: <span id="current-date">--/--/----</span></p>
                                 </div>
                             </div>
                             
@@ -421,8 +472,9 @@
 
 
     <script>
-        // La URL base de nuestra nueva API en Netlify
+        // --- GLOBAL APP STATE ---
         const API_BASE_URL = '/.netlify/functions/api';
+        const LOGIN_API_URL = '/.netlify/functions/login';
         
         // Global variables to store data
         let products = [];
@@ -433,6 +485,115 @@
         let preloadedPdfQr = null; // QR for PDF documents
         let currentProductInModal = null;
         let html5QrCode = null; // Variable for the scanner instance
+
+        // --- AUTHENTICATION & INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+            html5QrCode = new Html5Qrcode("reader");
+            setupLoginListener();
+            checkAuth();
+        });
+
+        function setupLoginListener() {
+            const loginForm = document.getElementById('login-form');
+            const errorMessage = document.getElementById('error-message');
+            const loginButton = document.getElementById('login-button');
+            const buttonText = document.getElementById('login-button-text');
+            const loader = document.getElementById('login-loader');
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                errorMessage.textContent = '';
+                buttonText.classList.add('hidden');
+                loader.classList.remove('hidden');
+                loginButton.disabled = true;
+
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    const response = await fetch(LOGIN_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password }),
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.status === 'success') {
+                        sessionStorage.setItem('user', JSON.stringify(result.user));
+                        checkAuth(); // Re-check auth to show the main app
+                    } else {
+                        errorMessage.textContent = result.message || 'Ocurrió un error inesperado.';
+                    }
+                } catch (error) {
+                    console.error('Error de red al intentar iniciar sesión:', error);
+                    errorMessage.textContent = 'No se pudo conectar al servidor. Revisa tu conexión.';
+                } finally {
+                    buttonText.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                    loginButton.disabled = false;
+                }
+            });
+        }
+        
+        function checkAuth() {
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            const loginContainer = document.getElementById('login-container');
+            const preloader = document.getElementById('preloader');
+            const appContainer = document.getElementById('app-container');
+
+            if (user) {
+                // User is logged in
+                loginContainer.classList.add('hidden');
+                appContainer.classList.add('hidden'); // Hide app until data is loaded
+                preloader.classList.remove('hidden');
+
+                // Update user info in the header
+                document.getElementById('user-fullname').textContent = user.fullName || 'Usuario';
+                document.getElementById('user-role').textContent = user.role || 'Rol';
+                
+                // Initialize the main application
+                initializeApp();
+            } else {
+                // User is not logged in
+                loginContainer.classList.remove('hidden');
+                loginContainer.classList.add('flex');
+                preloader.classList.add('hidden');
+                appContainer.classList.add('hidden');
+            }
+        }
+        
+        function logout() {
+            sessionStorage.removeItem('user');
+            // Reset app state if necessary
+            products = [];
+            sales = [];
+            cart = [];
+            // Re-check auth to show login screen
+            checkAuth();
+        }
+
+        async function initializeApp() {
+            initTabs();
+            setupEventListeners();
+
+            await Promise.all([
+                fetchProducts(),
+                fetchSales(),
+                loadImageAsPngDataUrl('https://dcdn-us.mitiendanube.com/stores/004/546/736/themes/common/logo-660776128-1736645739-9bb5db1715d3b799cdf782b0f0815d541736645739.webp').then(logo => preloadedLogo = logo),
+                loadImageAsJpegDataUrl('https://lh3.googleusercontent.com/d/1i08QtanwwFJ4yky2r2_smJL4ivBURTKG=w800?authuser=0').then(qr => preloadedPdfQr = qr)
+            ]);
+
+            renderInventoryProducts();
+            renderSalesResults();
+            displayNextSaleId();
+            generateReports();
+
+            document.getElementById('preloader').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('flex');
+        }
 
         // --- ROBUST NETWORKING & UI FUNCTIONS ---
         async function robustFetch(url, options, maxRetries = 3) {
@@ -496,34 +657,7 @@
             img.onerror = () => resolve(null);
             img.src = url + (url.includes('?') ? '&' : '?') + new Date().getTime();
         });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('current-year').textContent = new Date().getFullYear();
-            html5QrCode = new Html5Qrcode("reader");
-            initializeApp();
-        });
         
-        async function initializeApp() {
-            initTabs();
-            setupEventListeners();
-
-            await Promise.all([
-                fetchProducts(),
-                fetchSales(),
-                loadImageAsPngDataUrl('https://dcdn-us.mitiendanube.com/stores/004/546/736/themes/common/logo-660776128-1736645739-9bb5db1715d3b799cdf782b0f0815d541736645739.webp').then(logo => preloadedLogo = logo),
-                loadImageAsJpegDataUrl('https://lh3.googleusercontent.com/d/1i08QtanwwFJ4yky2r2_smJL4ivBURTKG=w800?authuser=0').then(qr => preloadedPdfQr = qr)
-            ]);
-
-            renderInventoryProducts();
-            renderSalesResults();
-            displayNextSaleId();
-            generateReports();
-
-            document.getElementById('preloader').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('flex');
-        }
-
         function initTabs() {
             const tabs = {
                 pos: { btn: document.getElementById('tab-pos'), content: document.getElementById('content-pos') },
@@ -551,6 +685,9 @@
         }
 
         function setupEventListeners() {
+            // Logout Button
+            document.getElementById('logout-button').addEventListener('click', logout);
+            
             const searchInput = document.getElementById('search-product');
             searchInput.addEventListener('input', handleSearch);
             searchInput.addEventListener('keydown', handleBarcodeScan);
