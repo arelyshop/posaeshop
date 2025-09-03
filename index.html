@@ -144,7 +144,7 @@
                          <p class="text-xs text-gray-400" id="user-role"></p>
                     </div>
                     <button id="logout-button" class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 text-sm flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="#FFFFFF" class="mr-2"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h280v80H200Zm440-160-55-58 102-102H360v-80h327L585-622l55-58 200 200-200 200Z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h280v80H200Zm440-160-55-58 102-102H360v-80h327L585-622l55-58 200 200-200 200Z"/></svg>
                         Salir
                     </button>
                 </div>
@@ -470,21 +470,41 @@
         </div>
     </div>
 
+    <!-- Share Modal -->
+    <div id="share-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Venta Completada</h3>
+            <p class="text-gray-600 mb-6">El PDF de la nota de venta ha sido generado. ¿Qué deseas hacer?</p>
+            <div class="space-y-3">
+                <button id="download-pdf-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#FFFFFF" class="mr-2"><path d="M480-320 280-520l56-56 104 104v-328h80v328l104-104 56 56-200 200ZM240-80q-33 0-56.5-23.5T160-160v-160h80v160h480v-160h80v160q0 33-23.5 56.5T720-80H240Z"/></svg>
+                    Descargar PDF
+                </button>
+                <button id="share-pdf-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#FFFFFF" class="mr-2"><path d="M720-80q-50 0-85-35t-35-85q0-7 1-14.5t3-13.5L322-392q-17 15-38 23.5T240-360q-50 0-85-35t-35-85q0-50 35-85t85-35q21 0 42 8.5t38 23.5l282-164q-2-6-3-13.5T600-720q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-21 0-42-8.5T640-632L358-468q2 6 3 13.5t1 14.5q0 7-1 14.5t-3 13.5l282 164q17-15 38-23.5t42-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-640q17 0 28.5-11.5T760-760q0-17-11.5-28.5T720-800q-17 0-28.5 11.5T680-760q0 17 11.5 28.5T720-720ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm480 280q17 0 28.5-11.5T760-200q0-17-11.5-28.5T720-240q-17 0-28.5 11.5T680-200q0 17 11.5 28.5T720-160Z"/></svg>
+                    Compartir
+                </button>
+            </div>
+             <button id="close-share-modal" class="mt-6 text-sm text-gray-500 hover:text-gray-800">Cerrar</button>
+        </div>
+    </div>
+
 
     <script>
         // --- GLOBAL APP STATE ---
         const API_BASE_URL = '/.netlify/functions/api';
         const LOGIN_API_URL = '/.netlify/functions/login';
         
-        // Global variables to store data
         let products = [];
         let sales = [];
         let cart = [];
         let saleIdToAnnul = null;
         let preloadedLogo = null;
-        let preloadedPdfQr = null; // QR for PDF documents
+        let preloadedPdfQr = null; 
         let currentProductInModal = null;
-        let html5QrCode = null; // Variable for the scanner instance
+        let html5QrCode = null; 
+        let currentPdfBlob = null;
+        let currentPdfFileName = '';
 
         // --- AUTHENTICATION & INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -522,7 +542,7 @@
 
                     if (response.ok && result.status === 'success') {
                         sessionStorage.setItem('user', JSON.stringify(result.user));
-                        checkAuth(); // Re-check auth to show the main app
+                        checkAuth(); 
                     } else {
                         errorMessage.textContent = result.message || 'Ocurrió un error inesperado.';
                     }
@@ -544,19 +564,15 @@
             const appContainer = document.getElementById('app-container');
 
             if (user) {
-                // User is logged in
                 loginContainer.classList.add('hidden');
-                appContainer.classList.add('hidden'); // Hide app until data is loaded
+                appContainer.classList.add('hidden'); 
                 preloader.classList.remove('hidden');
 
-                // Update user info in the header
                 document.getElementById('user-fullname').textContent = user.fullName || 'Usuario';
                 document.getElementById('user-role').textContent = user.role || 'Rol';
                 
-                // Initialize the main application
                 initializeApp();
             } else {
-                // User is not logged in
                 loginContainer.classList.remove('hidden');
                 loginContainer.classList.add('flex');
                 preloader.classList.add('hidden');
@@ -566,11 +582,9 @@
         
         function logout() {
             sessionStorage.removeItem('user');
-            // Reset app state if necessary
             products = [];
             sales = [];
             cart = [];
-            // Re-check auth to show login screen
             checkAuth();
         }
 
@@ -685,7 +699,6 @@
         }
 
         function setupEventListeners() {
-            // Logout Button
             document.getElementById('logout-button').addEventListener('click', logout);
             
             const searchInput = document.getElementById('search-product');
@@ -939,7 +952,8 @@
                 const result = await response.json();
                 if (result.status === 'success') {
                     showNotification('Venta registrada con éxito.', 'success');
-                    generateSalePDF(result.saleId, saleData);
+                    const { pdfBlob, fileName } = generateSalePDF(result.saleId, saleData);
+                    showShareOptions(pdfBlob, fileName);
                     
                     await Promise.all([fetchProducts(), fetchSales()]);
 
@@ -963,7 +977,7 @@
         }
 
         function generateSalePDF(saleId, saleData) {
-            generateDocumentPDF('Nota de Venta', `Nr: ${saleId}`, saleData);
+            return generateDocumentPDF('Nota de Venta', `Nr: ${saleId}`, saleData);
         }
 
         function handleGenerateQuote() {
@@ -1076,7 +1090,7 @@
                 doc.addImage(preloadedPdfQr.dataURL, 'JPEG', qrX, qrY, qrSize, qrSize, undefined, 'FAST');
             }
 
-            const customerName = data.customer.name.trim().replace(/ /g, "_") || "sin-cliente";
+            const customerName = (data.customer.name || '').trim().replace(/ /g, "_") || "sin-cliente";
             let fileName;
             if (filePrefix === 'Nota_Venta') {
                 const saleId = docIdentifier.split(': ')[1] || '';
@@ -1084,7 +1098,14 @@
             } else {
                 fileName = `${filePrefix}_${customerName}.pdf`;
             }
-            doc.save(fileName);
+            
+            if (filePrefix === 'Cotizacion') {
+                 doc.save(fileName);
+                 return;
+            }
+            
+            const pdfBlob = doc.output('blob');
+            return { pdfBlob, fileName };
         }
 
         async function handleAddOrUpdateProduct(e) {
@@ -1154,7 +1175,6 @@
                 
                 let productsHtml = '<ul>';
                 try {
-                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
                     const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
                     saleProducts.forEach(p => {
                         const price = p.precio !== undefined ? parseFloat(p.precio).toFixed(2) : 'N/A';
@@ -1194,7 +1214,6 @@
             }
 
             try {
-                // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
                 const saleItems = typeof saleToReprint.productosVendidos === 'string' ? JSON.parse(saleToReprint.productosVendidos) : saleToReprint.productosVendidos;
                 
                 const saleData = {
@@ -1206,7 +1225,8 @@
                     items: saleItems,
                     total: parseFloat(saleToReprint.totalVenta)
                 };
-                generateSalePDF(saleId, saleData);
+                const { pdfBlob, fileName } = generateSalePDF(saleId, saleData);
+                showShareOptions(pdfBlob, fileName);
             } catch (error) {
                 console.error("Error preparando data para PDF reprint:", error);
                 showNotification("No se pudo generar el PDF para esta venta.", 'error');
@@ -1362,7 +1382,6 @@
             filteredSales.forEach(sale => {
                 let saleCost = 0;
                 try {
-                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
                     const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
                     saleProducts.forEach(pInSale => {
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
@@ -1424,7 +1443,6 @@
             const reportRows = filteredSales.map(sale => {
                 let saleCost = 0;
                 try {
-                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
                     const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
                     saleProducts.forEach(pInSale => {
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
@@ -1485,6 +1503,57 @@
                 document.getElementById('modalQrImage').src = qrSrc;
                 document.getElementById('qrCodeModal').classList.remove('hidden');
             }
+        }
+        
+        function showShareOptions(pdfBlob, fileName) {
+            currentPdfBlob = pdfBlob;
+            currentPdfFileName = fileName;
+
+            const modal = document.getElementById('share-modal');
+            const shareBtn = document.getElementById('share-pdf-btn');
+            const downloadBtn = document.getElementById('download-pdf-btn');
+            const closeModalBtn = document.getElementById('close-share-modal');
+
+            const dataToShare = { files: [new File([currentPdfBlob], currentPdfFileName, { type: 'application/pdf' })] };
+            if (navigator.share && navigator.canShare && navigator.canShare(dataToShare)) {
+                shareBtn.classList.remove('hidden');
+            } else {
+                shareBtn.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+
+            downloadBtn.onclick = () => {
+                 const link = document.createElement('a');
+                 link.href = URL.createObjectURL(currentPdfBlob);
+                 link.download = currentPdfFileName;
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+                 modal.classList.add('hidden');
+            };
+
+            shareBtn.onclick = async () => {
+                try {
+                    const file = new File([currentPdfBlob], currentPdfFileName, { type: 'application/pdf' });
+                    await navigator.share({
+                        files: [file],
+                        title: `Nota de Venta: ${currentPdfFileName}`,
+                        text: 'Gracias por tu compra en ArelyShop.',
+                    });
+                } catch (error) {
+                    console.error('Error al compartir:', error);
+                    if (error.name !== 'AbortError') {
+                        showNotification('No se pudo compartir el archivo.', 'error');
+                    }
+                } finally {
+                    modal.classList.add('hidden');
+                }
+            };
+
+            closeModalBtn.onclick = () => {
+                modal.classList.add('hidden');
+            };
         }
 
         function startScanner(targetInputId) {
