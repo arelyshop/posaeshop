@@ -647,7 +647,6 @@
                 const response = await robustFetch(`${API_BASE_URL}/sales`);
                 const result = await response.json();
                 if (result.status === 'success') {
-                    // **CORRECCIÓN:** No es necesario re-mapear los datos aquí. Usaremos los nombres de la DB directamente.
                     sales = result.data;
                 }
             } catch (error) {
@@ -1023,7 +1022,8 @@
                 
                 let productsHtml = '<ul>';
                 try {
-                    const saleProducts = sale.productosVendidos;
+                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                    const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
                     saleProducts.forEach(p => {
                         const price = p.precio !== undefined ? parseFloat(p.precio).toFixed(2) : 'N/A';
                         productsHtml += `<li class="text-xs">${p.cantidad} x ${p.Nombre} @ Bs ${price}</li>`;
@@ -1062,13 +1062,16 @@
             }
 
             try {
+                // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                const saleItems = typeof saleToReprint.productosVendidos === 'string' ? JSON.parse(saleToReprint.productosVendidos) : saleToReprint.productosVendidos;
+                
                 const saleData = {
                     customer: {
                         name: saleToReprint.nombreCliente,
                         contact: saleToReprint.contacto,
                         id: saleToReprint.nitCi
                     },
-                    items: saleToReprint.productosVendidos,
+                    items: saleItems,
                     total: parseFloat(saleToReprint.totalVenta)
                 };
                 generateSalePDF(saleId, saleData);
@@ -1227,7 +1230,8 @@
             filteredSales.forEach(sale => {
                 let saleCost = 0;
                 try {
-                    const saleProducts = sale.productosVendidos;
+                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                    const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
                     saleProducts.forEach(pInSale => {
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
                         saleCost += cost * pInSale.cantidad;
@@ -1288,7 +1292,8 @@
             const reportRows = filteredSales.map(sale => {
                 let saleCost = 0;
                 try {
-                    const saleProducts = sale.productosVendidos;
+                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                    const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
                     saleProducts.forEach(pInSale => {
                         const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
                         saleCost += cost * pInSale.cantidad;
@@ -1390,3 +1395,4 @@
     </script>
 </body>
 </html>
+
