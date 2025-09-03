@@ -61,7 +61,7 @@
                     <img src="https://dcdn-us.mitiendanube.com/stores/004/546/736/themes/common/logo-660776128-1736645739-9bb5db1715d3b799cdf782b0f0815d541736645739.webp?0" alt="Logo ArelyShop" class="h-12" onerror="this.onerror=null; this.src='https://placehold.co/200x50/0f172a/ffffff?text=ArelyShop';">
                 </div>
                  <div class="flex justify-center mb-4">
-                   <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#1e293b"><path d="M480-120v-80h280v-560H480v-80h280q33 0 56.5-23.5T840-760v560q0 33-23.5 56.5T760-120H480Zm-80-160-55-58 102-102H120v-80h327L345-622l55-58 200 200-200 200Z"></path></svg>
+                   <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="#1e293b"><path d="M480-120v-80h280v-560H480v-80h280q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H480Zm-80-160-55-58 102-102H120v-80h327L345-622l55-58 200 200-200 200Z"></path></svg>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800">Iniciar Sesión</h1>
             </div>
@@ -358,7 +358,6 @@
         </footer>
     </div>
 
-    <!-- Modals (Product Detail, Annul Confirmation, QR Code, Scanner) -->
     <!-- Product Detail Modal -->
     <div id="productDetailModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-3xl w-full relative flex flex-col md:flex-row gap-6 max-h-[90vh]">
@@ -384,6 +383,8 @@
             </div>
         </div>
     </div>
+
+
     <!-- Annul Sale Confirmation Modal -->
     <div id="annul-confirm-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -400,6 +401,7 @@
             </div>
         </div>
     </div>
+
     <!-- QR Code Modal -->
     <div id="qrCodeModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white p-4 rounded-lg shadow-xl max-w-sm w-full relative">
@@ -407,6 +409,7 @@
             <img id="modalQrImage" src="" alt="Código QR para pago ampliado" class="w-full h-auto rounded-lg">
         </div>
     </div>
+
     <!-- Scanner Modal -->
     <div id="scanner-modal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white p-4 rounded-lg shadow-xl w-full max-w-md relative">
@@ -418,17 +421,18 @@
 
 
     <script>
-        const API_BASE_URL = '/.netlify/functions';
+        // La URL base de nuestra nueva API en Netlify
+        const API_BASE_URL = '/.netlify/functions/api';
         
+        // Global variables to store data
         let products = [];
         let sales = [];
         let cart = [];
         let saleIdToAnnul = null;
         let preloadedLogo = null;
-        let preloadedPdfQr = null; 
+        let preloadedPdfQr = null; // QR for PDF documents
         let currentProductInModal = null;
-        let currentUser = null; 
-        let html5QrCode = null; 
+        let html5QrCode = null; // Variable for the scanner instance
 
         // --- ROBUST NETWORKING & UI FUNCTIONS ---
         async function robustFetch(url, options, maxRetries = 3) {
@@ -436,8 +440,7 @@
                 try {
                     const response = await fetch(url, options);
                     if (!response.ok) {
-                        const errorBody = await response.json().catch(() => ({ message: `Error HTTP: ${response.status}` }));
-                        throw new Error(errorBody.message || `Error HTTP: ${response.status}`);
+                        throw new Error(`Error HTTP: ${response.status}`);
                     }
                     return response;
                 } catch (error) {
@@ -456,10 +459,12 @@
             const banner = document.getElementById('notification-banner');
             const messageSpan = document.getElementById('notification-message');
             messageSpan.textContent = message;
-            banner.className = 'fixed top-0 left-0 right-0 p-4 text-white text-center z-50'; 
+            banner.className = 'fixed top-0 left-0 right-0 p-4 text-white text-center z-50';
             banner.classList.add(type === 'success' ? 'bg-green-600' : 'bg-red-600');
             banner.style.transform = 'translateY(0)';
-            setTimeout(() => { banner.style.transform = 'translateY(-100%)'; }, 4000);
+            setTimeout(() => {
+                banner.style.transform = 'translateY(-100%)';
+            }, 4000);
         }
 
         const loadImageAsPngDataUrl = (url) => new Promise((resolve) => {
@@ -471,13 +476,12 @@
                 canvas.height = img.height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0);
-                const dataURL = canvas.toDataURL('image/png');
-                resolve({dataURL, width: img.width, height: img.height});
+                resolve({dataURL: canvas.toDataURL('image/png'), width: img.width, height: img.height});
             };
             img.onerror = () => resolve(null);
             img.src = url + (url.includes('?') ? '&' : '?') + new Date().getTime();
         });
-        
+
         const loadImageAsJpegDataUrl = (url) => new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'Anonymous';
@@ -487,107 +491,22 @@
                 canvas.height = img.height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0);
-                const dataURL = canvas.toDataURL('image/jpeg', 0.8); // 80% quality
-                resolve({dataURL, width: img.width, height: img.height});
+                resolve({dataURL: canvas.toDataURL('image/jpeg', 0.8), width: img.width, height: img.height});
             };
-            img.onerror = () => resolve(null); // Resolve as null on error
+            img.onerror = () => resolve(null);
             img.src = url + (url.includes('?') ? '&' : '?') + new Date().getTime();
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('login-form').addEventListener('submit', handleLogin);
-            document.getElementById('logout-button').addEventListener('click', handleLogout);
             document.getElementById('current-year').textContent = new Date().getFullYear();
             html5QrCode = new Html5Qrcode("reader");
-            checkSession();
+            initializeApp();
         });
         
-        // --- LOGIN, SESSION & INITIALIZATION ---
-        async function handleLogin(event) {
-            event.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorP = document.getElementById('login-error');
-            const button = event.target.querySelector('button[type="submit"]');
-            const buttonText = document.getElementById('login-button-text');
-            const loader = document.getElementById('login-loader');
-
-            errorP.textContent = '';
-            button.disabled = true;
-            buttonText.classList.add('hidden');
-            loader.classList.remove('hidden');
-
-            try {
-                const response = await robustFetch(`${API_BASE_URL}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password }),
-                });
-
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    const now = new Date();
-                    // Sesión de 8 horas
-                    const expiration = now.getTime() + 8 * 60 * 60 * 1000; 
-                    const session = { user: result.user, expires: expiration };
-                    localStorage.setItem('userSession', JSON.stringify(session));
-                    
-                    document.getElementById('login-container').classList.add('hidden');
-                    document.getElementById('login-container').classList.remove('flex');
-                    document.getElementById('preloader').classList.remove('hidden');
-                    
-                    await initializeApp(result.user);
-                } else {
-                     throw new Error(result.message || 'Error desconocido');
-                }
-            } catch (error) {
-                console.error("Error al iniciar sesión:", error);
-                errorP.textContent = error.message === 'Usuario o contraseña incorrectos' 
-                    ? 'Usuario o contraseña incorrectos.' 
-                    : 'Error de conexión. Intente de nuevo.';
-            } finally {
-                button.disabled = false;
-                buttonText.classList.remove('hidden');
-                loader.classList.add('hidden');
-            }
-        }
-        
-        function checkSession() {
-            const sessionData = localStorage.getItem('userSession');
-            if (!sessionData) {
-                document.getElementById('preloader').classList.add('hidden');
-                document.getElementById('login-container').classList.remove('hidden');
-                document.getElementById('login-container').classList.add('flex');
-                return;
-            }
-
-            const session = JSON.parse(sessionData);
-            const now = new Date().getTime();
-
-            if (now > session.expires) {
-                localStorage.removeItem('userSession');
-                document.getElementById('preloader').classList.add('hidden');
-                document.getElementById('login-container').classList.remove('hidden');
-                document.getElementById('login-container').classList.add('flex');
-                return;
-            }
-            initializeApp(session.user);
-        }
-        
-        function handleLogout() {
-            currentUser = null;
-            localStorage.removeItem('userSession');
-            location.reload(); // Recarga la página para mostrar el login
-        }
-        
-        async function initializeApp(user) {
-            currentUser = user;
-            document.getElementById('user-fullname').textContent = currentUser.fullName;
+        async function initializeApp() {
             initTabs();
-            setupUIForUser(currentUser.role);
             setupEventListeners();
-            
+
             await Promise.all([
                 fetchProducts(),
                 fetchSales(),
@@ -599,29 +518,10 @@
             renderSalesResults();
             displayNextSaleId();
             generateReports();
-            
+
             document.getElementById('preloader').classList.add('hidden');
-            document.getElementById('login-container').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('app-container').classList.add('flex');
-        }
-        
-        function setupUIForUser(role) {
-            const isAdmin = role === 'admin';
-            document.getElementById('tab-inventory').style.display = isAdmin ? 'flex' : 'none';
-            document.getElementById('tab-reports').style.display = isAdmin ? 'flex' : 'none';
-            
-            // Reset to POS tab
-            document.querySelectorAll('[id^="tab-"]').forEach(tab => {
-                tab.classList.remove('tab-active');
-                tab.classList.add('tab-inactive');
-            });
-            document.querySelectorAll('[id^="content-"]').forEach(content => {
-                content.style.display = 'none';
-            });
-
-            document.getElementById('tab-pos').classList.add('tab-active');
-            document.getElementById('content-pos').style.display = 'block';
         }
 
         function initTabs() {
@@ -633,7 +533,7 @@
             };
 
             Object.keys(tabs).forEach(key => {
-                tabs[key].btn.addEventListener('click', () => { 
+                tabs[key].btn.addEventListener('click', () => {
                     Object.values(tabs).forEach(t => {
                         t.btn.classList.remove('tab-active');
                         t.btn.classList.add('tab-inactive');
@@ -642,7 +542,6 @@
                     tabs[key].btn.classList.add('tab-active');
                     tabs[key].btn.classList.remove('tab-inactive');
                     tabs[key].content.style.display = 'block';
-
                     if (key === 'inventory') renderInventoryProducts();
                     if (key === 'salesQuery') renderSalesResults();
                     if (key === 'reports') generateReports();
@@ -651,45 +550,11 @@
             tabs.pos.content.style.display = 'block';
         }
 
-        // --- DATA FETCHING ---
-        async function fetchProducts() {
-            try {
-                const response = await robustFetch(`${API_BASE_URL}/api/products`);
-                const result = await response.json();
-                products = result.status === 'success' ? result.data : [];
-            } catch (error) {
-                showNotification("No se pudieron cargar los productos. Revisa tu conexión.", 'error');
-            }
-        }
-
-        async function fetchSales() {
-            try {
-                const response = await robustFetch(`${API_BASE_URL}/api/sales`);
-                const result = await response.json();
-                 if (result.status === 'success') {
-                    sales = result.data.map(sale => ({
-                        ...sale,
-                        productosVendidos: typeof sale.productosVendidos === 'string' 
-                            ? JSON.parse(sale.productosVendidos) 
-                            : sale.productosVendidos
-                    })).sort((a, b) => {
-                        const numA = parseInt((a.saleId || "AS0").substring(2));
-                        const numB = parseInt((b.saleId || "AS0").substring(2));
-                        return numB - numA;
-                    });
-                } else {
-                    sales = [];
-                }
-            } catch (error) {
-                showNotification("No se pudieron cargar las ventas. Revisa tu conexión.", 'error');
-            }
-        }
-        
-        // --- EVENT LISTENERS SETUP ---
         function setupEventListeners() {
             const searchInput = document.getElementById('search-product');
             searchInput.addEventListener('input', handleSearch);
             searchInput.addEventListener('keydown', handleBarcodeScan);
+
             document.getElementById('inventorySearchInput').addEventListener('input', renderInventoryProducts);
             document.getElementById('search-sales-input').addEventListener('input', renderSalesResults);
             document.getElementById('finalize-sale-button').addEventListener('click', finalizeSale);
@@ -700,6 +565,7 @@
                 clearInventoryForm();
                 document.getElementById('inventory-form-container').scrollIntoView({ behavior: 'smooth' });
             });
+
             document.getElementById('filter-report-btn').addEventListener('click', () => {
                 const startDate = document.getElementById('startDate').value;
                 const endDate = document.getElementById('endDate').value;
@@ -711,6 +577,7 @@
                 generateReports();
             });
             document.getElementById('download-report-btn').addEventListener('click', generateReportPDF);
+
             document.getElementById('closeProductModal').addEventListener('click', () => document.getElementById('productDetailModal').classList.add('hidden'));
             document.getElementById('editProductModalBtn').addEventListener('click', () => {
                 if (currentProductInModal) {
@@ -725,6 +592,7 @@
                     copyToClipboard(textToCopy, e.currentTarget);
                 });
             });
+
             document.getElementById('cancel-annul-btn').addEventListener('click', () => {
                 document.getElementById('annul-confirm-modal').classList.add('hidden');
             });
@@ -734,6 +602,7 @@
                 }
                 document.getElementById('annul-confirm-modal').classList.add('hidden');
             });
+            
             document.getElementById('cart-items').addEventListener('click', (e) => {
                 const infoButton = e.target.closest('.info-btn');
                 if (infoButton) {
@@ -746,16 +615,41 @@
                     }
                 }
             });
+            
             document.getElementById('closeQrModal').addEventListener('click', () => {
                 document.getElementById('qrCodeModal').classList.add('hidden');
             });
+
             document.getElementById('scan-pos-btn').addEventListener('click', () => startScanner('search-product'));
             document.getElementById('scan-inventory-btn').addEventListener('click', () => startScanner('codigoBarras'));
             document.getElementById('scan-inventory-search-btn').addEventListener('click', () => startScanner('inventorySearchInput'));
             document.getElementById('close-scanner-btn').addEventListener('click', stopScanner);
         }
+        
+        async function fetchProducts() {
+            try {
+                const response = await robustFetch(`${API_BASE_URL}/products`);
+                const result = await response.json();
+                products = result.status === 'success' ? result.data : [];
+            } catch (error) {
+                console.error("Fallo al cargar productos:", error);
+                showNotification("No se pudieron cargar los productos. Revisa tu conexión.", 'error');
+            }
+        }
 
-        // --- POS & CART FUNCTIONS ---
+        async function fetchSales() {
+            try {
+                const response = await robustFetch(`${API_BASE_URL}/sales`);
+                const result = await response.json();
+                if (result.status === 'success') {
+                    sales = result.data;
+                }
+            } catch (error) {
+                console.error("Fallo al cargar las ventas:", error);
+                showNotification("No se pudieron cargar las ventas. Revisa tu conexión.", 'error');
+            }
+        }
+        
         function displayNextSaleId() {
             let nextId = "AS1";
             if (sales.length > 0 && sales[0].saleId) {
@@ -821,7 +715,7 @@
             document.getElementById('search-results').classList.add('hidden');
             renderCart();
         }
-        
+
         function renderCart() {
             const cartItemsContainer = document.getElementById('cart-items');
             cartItemsContainer.innerHTML = '';
@@ -849,9 +743,27 @@
             updateTotal();
         }
         
-        function updateItemPrice(index, newPrice) { const price = parseFloat(newPrice); if (!isNaN(price) && price >= 0) cart[index].customPrice = price; renderCart(); }
-        function setQuantity(index, newQuantity) { const quantity = parseInt(newQuantity); if (!isNaN(quantity) && quantity > 0) { cart[index].quantity = quantity; } else { cart[index].quantity = 1; } renderCart(); }
-        function removeFromCart(index) { cart.splice(index, 1); renderCart(); }
+        function updateItemPrice(index, newPrice) {
+            const price = parseFloat(newPrice);
+            if (!isNaN(price) && price >= 0) cart[index].customPrice = price;
+            renderCart();
+        }
+
+        function setQuantity(index, newQuantity) {
+            const quantity = parseInt(newQuantity);
+            if (!isNaN(quantity) && quantity > 0) {
+                cart[index].quantity = quantity;
+            } else {
+                cart[index].quantity = 1;
+            }
+            renderCart();
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            renderCart();
+        }
+
         function updateTotal() {
             const total = cart.reduce((sum, item) => sum + (item.quantity * item.customPrice), 0);
             document.getElementById('total-amount').textContent = `Bs ${total.toFixed(2)}`;
@@ -871,29 +783,40 @@
 
             const saleData = {
                 customer: { name: document.getElementById('customer-name').value, contact: document.getElementById('customer-contact').value, id: document.getElementById('customer-id').value },
-                items: cart.map(item => ({ Nombre: item.nombre, SKU: item.sku, cantidad: item.quantity, precio: item.customPrice, 'Precio (Compra)': item.precioCompra })),
+                items: cart.map(item => ({ 
+                    Nombre: item.nombre, 
+                    SKU: item.sku, 
+                    cantidad: item.quantity, 
+                    precio: item.customPrice,
+                    'Precio (Compra)': item.precioCompra
+                })),
                 total: cart.reduce((sum, item) => sum + (item.quantity * item.customPrice), 0)
             };
             
             try {
-                const response = await robustFetch(`${API_BASE_URL}/api/sales`, {
+                const response = await robustFetch(`${API_BASE_URL}/sales`, {
                     method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ data: saleData })
                 });
                 const result = await response.json();
                 if (result.status === 'success') {
                     showNotification('Venta registrada con éxito.', 'success');
                     generateSalePDF(result.saleId, saleData);
+                    
                     await Promise.all([fetchProducts(), fetchSales()]);
+
                     cart = [];
                     renderCart();
                     document.getElementById('customer-form').reset();
                     renderSalesResults();
                     displayNextSaleId();
+
                 } else {
                     throw new Error(result.message || 'Error desconocido del servidor.');
                 }
             } catch (error) {
+                console.error('Error al registrar la venta.', error);
                 showNotification(`Error al registrar la venta: ${error.message}`, 'error');
             } finally {
                 buttonText.classList.remove('hidden');
@@ -901,75 +824,132 @@
                 button.disabled = cart.length === 0;
             }
         }
-        
-        // --- PDF & QUOTE FUNCTIONS ---
-        function generateSalePDF(saleId, saleData) { generateDocumentPDF('Nota de Venta', `Nr: ${saleId}`, saleData); }
+
+        function generateSalePDF(saleId, saleData) {
+            generateDocumentPDF('Nota de Venta', `Nr: ${saleId}`, saleData);
+        }
+
         function handleGenerateQuote() {
-            if (cart.length === 0) { showNotification("El carrito está vacío.", 'error'); return; }
+            if (cart.length === 0) {
+                showNotification("El carrito está vacío. Añade productos para cotizar.", 'error');
+                return;
+            }
+
             const quoteData = {
-                customer: { name: document.getElementById('customer-name').value, contact: document.getElementById('customer-contact').value, id: document.getElementById('customer-id').value },
-                items: cart.map(item => ({ Nombre: item.nombre, SKU: item.sku, cantidad: item.quantity, precio: item.customPrice })),
+                customer: { 
+                    name: document.getElementById('customer-name').value, 
+                    contact: document.getElementById('customer-contact').value, 
+                    id: document.getElementById('customer-id').value 
+                },
+                items: cart.map(item => ({ 
+                    Nombre: item.nombre, 
+                    SKU: item.sku, 
+                    cantidad: item.quantity, 
+                    precio: item.customPrice 
+                })),
                 total: cart.reduce((sum, item) => sum + (item.quantity * item.customPrice), 0)
             };
+            
             generateQuotePDF(quoteData);
         }
-        function generateQuotePDF(quoteData) { generateDocumentPDF('Cotización', 'Válido por 24hrs.', quoteData, 'Cotizacion'); }
+
+        function generateQuotePDF(quoteData) {
+            generateDocumentPDF('Cotización', 'Válido por 24hrs.', quoteData, 'Cotizacion');
+        }
+
         function generateDocumentPDF(docType, docIdentifier, data, filePrefix = 'Nota_Venta') {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
+            
             const pageW = doc.internal.pageSize.getWidth();
             const margin = 14;
+            const headerW = pageW - (margin * 2);
+            const headerH = 30;
+            const r = 3; 
+            
             doc.setFillColor('#303c54');
-            doc.roundedRect(margin, margin, pageW - (margin * 2), 30, 3, 3, 'F');
+            doc.roundedRect(margin, margin, headerW, headerH, r, r, 'F');
             doc.setTextColor('#FFFFFF');
+
             let textStartX = margin + 5;
             if (preloadedLogo) {
                 const logoH = 12; 
                 const logoW = (preloadedLogo.width / preloadedLogo.height) * logoH;
-                doc.addImage(preloadedLogo.dataURL, 'PNG', margin + 5, margin + (30 - logoH) / 2, logoW, logoH, undefined, 'FAST');
+                const logoY = margin + (headerH - logoH) / 2;
+                doc.addImage(preloadedLogo.dataURL, 'PNG', margin + 5, logoY, logoW, logoH, undefined, 'FAST');
                 textStartX = margin + logoW + 8;
             }
+            
             doc.setFontSize(17.6);
             doc.text("ArelyShop", textStartX, margin + 15);
             doc.setFontSize(8.8);
             doc.text("Santa Cruz de la Sierra, Bolivia", textStartX, margin + 21);
+
             doc.setFontSize(16);
             doc.text(docType, pageW - margin - 5, margin + 12, { align: 'right' });
             doc.setFontSize(10);
             doc.text(docIdentifier, pageW - margin - 5, margin + 18, { align: 'right' });
             doc.text(`Fecha: ${new Date().toLocaleDateString('es-BO')}`, pageW - margin - 5, margin + 24, { align: 'right' });
-            const startY = margin + 30 + 10;
+
+            const startY = margin + headerH + 10;
             doc.setTextColor('#000000');
             doc.setFontSize(12);
             doc.text("Datos del Cliente:", margin, startY);
             doc.setFontSize(10);
-            doc.text(`Nombre: ${data.customer.name || 'N/A'}   |   Contacto: ${data.customer.contact || 'N/A'}   |   NIT/CI: ${data.customer.id || 'N/A'}`, margin, startY + 8);
+            
+            const customerInfo = `Nombre: ${data.customer.name || 'N/A'}   |   Contacto: ${data.customer.contact || 'N/A'}   |   NIT/CI: ${data.customer.id || 'N/A'}`;
+            doc.text(customerInfo, margin, startY + 8);
+            
             const tableColumn = ["Cant.", "Descripción", "P. Unit.", "Subtotal"];
-            const tableRows = data.items.map(item => [ item.cantidad, `${item.Nombre}\n(SKU: ${item.SKU || 'N/A'})`, `Bs ${item.precio.toFixed(2)}`, `Bs ${(item.cantidad * item.precio).toFixed(2)}` ]);
-            doc.autoTable({
-                head: [tableColumn], body: tableRows, startY: startY + 15, margin: { left: margin, right: margin },
-                headStyles: { fillColor: '#cdcdcd', textColor: '#000000' }, styles: { cellPadding: 2, fontSize: 9 },
-                didParseCell: (data) => { if (data.column.dataKey === 1) data.cell.styles.fontSize = 8; }
+            const tableRows = [];
+            data.items.forEach(item => {
+                const description = `${item.Nombre}\n(SKU: ${item.SKU || 'N/A'})`;
+                const itemData = [ item.cantidad, description, `Bs ${item.precio.toFixed(2)}`, `Bs ${(item.cantidad * item.precio).toFixed(2)}` ];
+                tableRows.push(itemData);
             });
+
+            doc.autoTable({
+                head: [tableColumn],
+                body: tableRows, 
+                startY: startY + 15, 
+                margin: { left: margin, right: margin },
+                headStyles: { fillColor: '#cdcdcd', textColor: '#000000' },
+                styles: { cellPadding: 2, fontSize: 9 },
+                didParseCell: function (data) {
+                    if (data.column.dataKey === 1) {
+                        data.cell.styles.fontSize = 8;
+                    }
+                }
+            });
+            
             const finalY = doc.autoTable.previous.finalY;
             doc.setFontSize(14);
             doc.text("TOTAL:", margin, finalY + 15);
             doc.text(`Bs ${data.total.toFixed(2)}`, pageW - margin, finalY + 15, { align: 'right' });
+            
             doc.setFontSize(10);
             const thankYouMessage = filePrefix === 'Cotizacion' ? "¡Gracias por su interés!" : "¡Gracias por su compra!";
             doc.text(thankYouMessage, pageW / 2, finalY + 30, { align: 'center' });
             doc.text("Visita nuestra tienda online: arelyshopbo.mitiendanube.com", pageW / 2, finalY + 35, { align: 'center' });
+            
             if (preloadedPdfQr) {
                 const qrSize = 25;
-                doc.addImage(preloadedPdfQr.dataURL, 'JPEG', (pageW - qrSize) / 2, finalY + 40, qrSize, qrSize, undefined, 'FAST');
+                const qrX = (pageW - qrSize) / 2;
+                const qrY = finalY + 40;
+                doc.addImage(preloadedPdfQr.dataURL, 'JPEG', qrX, qrY, qrSize, qrSize, undefined, 'FAST');
             }
+
             const customerName = data.customer.name.trim().replace(/ /g, "_") || "sin-cliente";
-            const saleId = docIdentifier.split(': ')[1] || '';
-            const fileName = filePrefix === 'Nota_Venta' ? `${filePrefix}_${saleId}_${customerName}.pdf` : `${filePrefix}_${customerName}.pdf`;
+            let fileName;
+            if (filePrefix === 'Nota_Venta') {
+                const saleId = docIdentifier.split(': ')[1] || '';
+                fileName = `${filePrefix}_${saleId}_${customerName}.pdf`;
+            } else {
+                fileName = `${filePrefix}_${customerName}.pdf`;
+            }
             doc.save(fileName);
         }
 
-        // --- INVENTORY MANAGEMENT FUNCTIONS ---
         async function handleAddOrUpdateProduct(e) {
             e.preventDefault();
             const form = document.getElementById('inventory-form');
@@ -981,23 +961,29 @@
             button.disabled = true;
             
             const formData = new FormData(form);
-            const productData = Object.fromEntries(formData.entries());
+            const productData = {};
+            formData.forEach((value, key) => { productData[key] = value; });
             
             const isUpdating = productData.originalSku && productData.originalSku !== '';
             const method = isUpdating ? 'PUT' : 'POST';
             
             try {
-                const response = await robustFetch(`${API_BASE_URL}/api/products`, { method, body: JSON.stringify({ data: productData }) });
+                const response = await robustFetch(`${API_BASE_URL}/products`, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ data: productData })
+                });
                 const result = await response.json();
                 if (result.status === 'success') {
-                    showNotification(isUpdating ? 'Producto actualizado.' : 'Producto registrado.', 'success');
+                    showNotification(isUpdating ? 'Producto actualizado con éxito.' : 'Producto registrado con éxito.', 'success');
                     clearInventoryForm();
                     await fetchProducts();
                     renderInventoryProducts();
                 } else {
-                    throw new Error(result.message || 'Error desconocido.');
+                    throw new Error(result.message || 'Error desconocido del servidor.');
                 }
             } catch (error) {
+                console.error('Error al procesar el producto.', error);
                 showNotification(`Error: ${error.message}`, 'error');
             } finally {
                 buttonText.classList.remove('hidden');
@@ -1006,31 +992,155 @@
             }
         }
         
+        function renderSalesResults() {
+            const searchTerm = document.getElementById('search-sales-input').value.toLowerCase();
+            const container = document.getElementById('sales-results-container');
+            container.innerHTML = '';
+            
+            const filteredSales = sales.filter(s => 
+                s.saleId?.toLowerCase().includes(searchTerm) ||
+                s.nombreCliente?.toLowerCase().includes(searchTerm) ||
+                s.contacto?.toString().toLowerCase().includes(searchTerm)
+            );
+
+            if (filteredSales.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No se encontraron ventas.</p>';
+                return;
+            }
+
+            filteredSales.forEach(sale => {
+                const isAnnulled = sale.estado === 'Anulada';
+                const statusText = isAnnulled ? 'Anulada' : 'Completada';
+                const statusColor = isAnnulled ? 'bg-red-500 text-white' : 'bg-green-500 text-white';
+                const card = document.createElement('div');
+                card.className = `p-4 border rounded-lg ${isAnnulled ? 'bg-gray-200 opacity-70' : 'bg-white'}`;
+                
+                let productsHtml = '<ul>';
+                try {
+                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                    const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
+                    saleProducts.forEach(p => {
+                        const price = p.precio !== undefined ? parseFloat(p.precio).toFixed(2) : 'N/A';
+                        productsHtml += `<li class="text-xs">${p.cantidad} x ${p.Nombre} @ Bs ${price}</li>`;
+                    });
+                } catch(e) { productsHtml += '<li>Error al leer productos</li>'; }
+                productsHtml += '</ul>';
+                
+                const totalVenta = sale.totalVenta !== undefined ? parseFloat(sale.totalVenta).toFixed(2) : 'N/A';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-lg">Venta ${sale.saleId}</p>
+                            <p class="text-sm text-gray-600">${new Date(sale.fechaVenta).toLocaleDateString('es-BO')} - ${sale.nombreCliente} (${sale.contacto || 'N/A'})</p>
+                            <p class="font-semibold text-blue-600">Total: Bs ${totalVenta}</p>
+                        </div>
+                        <div class="text-right">
+                             <span class="font-semibold text-sm px-2 py-1 rounded-lg ${statusColor}">${statusText}</span>
+                             <div class="mt-2 flex space-x-2 justify-end">
+                                <button onclick="reprintSale('${sale.saleId}')" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Reimprimir</button>
+                                <button onclick="openAnnulConfirmModal('${sale.saleId}')" class="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 disabled:bg-gray-400" ${isAnnulled ? 'disabled' : ''}>Anular</button>
+                             </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm">${productsHtml}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function reprintSale(saleId) {
+            const saleToReprint = sales.find(s => s.saleId === saleId);
+            if (!saleToReprint) {
+                showNotification("Venta no encontrada para reimprimir.", 'error');
+                return;
+            }
+
+            try {
+                // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                const saleItems = typeof saleToReprint.productosVendidos === 'string' ? JSON.parse(saleToReprint.productosVendidos) : saleToReprint.productosVendidos;
+                
+                const saleData = {
+                    customer: {
+                        name: saleToReprint.nombreCliente,
+                        contact: saleToReprint.contacto,
+                        id: saleToReprint.nitCi
+                    },
+                    items: saleItems,
+                    total: parseFloat(saleToReprint.totalVenta)
+                };
+                generateSalePDF(saleId, saleData);
+            } catch (error) {
+                console.error("Error preparando data para PDF reprint:", error);
+                showNotification("No se pudo generar el PDF para esta venta.", 'error');
+            }
+        }
+
+        function openAnnulConfirmModal(saleId) {
+            saleIdToAnnul = saleId;
+            document.getElementById('annul-modal-text').textContent = `¿Estás seguro de que quieres anular la venta ${saleId}? Esta acción no se puede deshacer y el stock será restaurado.`;
+            document.getElementById('annul-confirm-modal').classList.remove('hidden');
+        }
+
+        async function annulSaleInBackend(saleId) {
+            try {
+                const response = await robustFetch(`${API_BASE_URL}/sales/annul`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ data: { saleId: saleId } })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showNotification(result.message, 'success');
+                    await Promise.all([fetchSales(), fetchProducts()]);
+                    renderSalesResults();
+                } else {
+                    throw new Error(result.message || 'Error desconocido del servidor.');
+                }
+            } catch (error) {
+                console.error('Error al anular la venta.', error);
+                showNotification(`Error: ${error.message}`, 'error');
+            }
+        }
+
         function renderInventoryProducts() {
             const searchTerm = document.getElementById('inventorySearchInput').value.toLowerCase();
             const container = document.getElementById('inventorySearchResults');
             container.innerHTML = '';
-            const filtered = products.filter(p => p.nombre?.toLowerCase().includes(searchTerm) || p.sku?.toString().toLowerCase().includes(searchTerm) || p.codigoBarras?.toString().toLowerCase().includes(searchTerm));
+
+            const filtered = products.filter(p => 
+                p.nombre?.toLowerCase().includes(searchTerm) ||
+                p.sku?.toString().toLowerCase().includes(searchTerm) ||
+                p.codigoBarras?.toString().toLowerCase().includes(searchTerm)
+            );
+
             if (filtered.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>'; return;
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center">No se encontraron productos.</p>';
+                return;
             }
+
             filtered.forEach(product => {
                 const card = document.createElement('div');
                 card.className = "bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-200 flex flex-col cursor-pointer";
                 card.onclick = () => showProductModal(product, 'inventory');
+
                 const price = parseFloat(product.precioVenta || 0).toFixed(2);
+                
                 card.innerHTML = `
                     <img src="${product.urlFoto1 || 'https://placehold.co/400x400/e2e8f0/94a3b8?text=Sin+Imagen'}" alt="${product.nombre}" class="w-full h-48 object-cover" onerror="this.onerror=null; this.src='https://placehold.co/400x400/e2e8f0/94a3b8?text=Sin+Imagen';">
                     <div class="p-4 flex-grow flex flex-col">
                         <h3 class="font-bold text-md mb-2 truncate" title="${product.nombre}">${product.nombre}</h3>
                         <p class="text-sm text-gray-600">SKU: ${product.sku || 'N/A'}</p>
                         <p class="text-sm text-gray-600">Stock: ${product.cantidad || 0}</p>
-                        <div class="mt-auto pt-2"><p class="text-lg font-bold text-blue-600">Bs. ${price}</p></div>
-                    </div>`;
+                        <div class="mt-auto pt-2">
+                            <p class="text-lg font-bold text-blue-600">Bs. ${price}</p>
+                        </div>
+                    </div>
+                `;
                 container.appendChild(card);
             });
         }
-        
+
         function showProductModal(product, source = 'inventory') {
             currentProductInModal = product;
             document.getElementById('modalProductImage').src = product.urlFoto1 || 'https://placehold.co/400x400/e2e8f0/94a3b8?text=Sin+Imagen';
@@ -1041,6 +1151,7 @@
             document.getElementById('modalProductPrice').textContent = `Bs. ${parseFloat(product.precioVenta || 0).toFixed(2)}`;
             document.getElementById('modalProductCost').textContent = `Bs. ${parseFloat(product.precioCompra || 0).toFixed(2)}`;
             document.getElementById('modalProductWholesale').textContent = `Bs. ${parseFloat(product.precioMayoreo || 0).toFixed(2)}`;
+            
             document.getElementById('editProductModalBtn').style.display = (source === 'cart') ? 'none' : 'block';
             document.getElementById('productDetailModal').classList.remove('hidden');
         }
@@ -1056,9 +1167,11 @@
             document.getElementById('cantidad').value = product.cantidad || '';
             document.getElementById('codigoBarras').value = product.codigoBarras || '';
             document.getElementById('urlFoto1').value = product.urlFoto1 || '';
+            
             document.getElementById('inventory-button-text').textContent = 'Actualizar Producto';
             document.getElementById('inventory-form-container').scrollIntoView({ behavior: 'smooth' });
         }
+
         function clearInventoryForm() {
             document.getElementById('inventory-form-title').textContent = "Registrar Nuevo Producto";
             document.getElementById('inventory-form').reset();
@@ -1066,181 +1179,6 @@
             document.getElementById('inventory-button-text').textContent = 'Registrar Producto';
         }
 
-        // --- SALES CONSULTATION & REPORTS ---
-        function renderSalesResults() {
-            const searchTerm = document.getElementById('search-sales-input').value.toLowerCase();
-            const container = document.getElementById('sales-results-container');
-            container.innerHTML = '';
-            const filteredSales = sales.filter(s => s.saleId?.toLowerCase().includes(searchTerm) || s.nombreCliente?.toLowerCase().includes(searchTerm) || s.contacto?.toString().toLowerCase().includes(searchTerm));
-            if (filteredSales.length === 0) { container.innerHTML = '<p class="text-gray-500">No se encontraron ventas.</p>'; return; }
-            filteredSales.forEach(sale => {
-                const isAnnulled = sale.estado === 'Anulada';
-                const statusColor = isAnnulled ? 'bg-red-500 text-white' : 'bg-green-500 text-white';
-                const card = document.createElement('div');
-                card.className = `p-4 border rounded-lg ${isAnnulled ? 'bg-gray-200 opacity-70' : 'bg-white'}`;
-                let productsHtml = '<ul>';
-                try {
-                    sale.productosVendidos.forEach(p => { productsHtml += `<li class="text-xs">${p.cantidad} x ${p.Nombre} @ Bs ${parseFloat(p.precio).toFixed(2)}</li>`; });
-                } catch(e) { productsHtml += '<li>Error al leer productos</li>'; }
-                productsHtml += '</ul>';
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="font-bold text-lg">Venta ${sale.saleId}</p>
-                            <p class="text-sm text-gray-600">${new Date(sale.fechaVenta).toLocaleDateString('es-BO')} - ${sale.nombreCliente} (${sale.contacto || 'N/A'})</p>
-                            <p class="font-semibold text-blue-600">Total: Bs ${parseFloat(sale.totalVenta).toFixed(2)}</p>
-                        </div>
-                        <div class="text-right">
-                             <span class="font-semibold text-sm px-2 py-1 rounded-lg ${statusColor}">${sale.estado}</span>
-                             <div class="mt-2 flex space-x-2 justify-end">
-                                <button onclick="reprintSale('${sale.saleId}')" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Reimprimir</button>
-                                <button onclick="openAnnulConfirmModal('${sale.saleId}')" class="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 disabled:bg-gray-400" ${isAnnulled ? 'disabled' : ''}>Anular</button>
-                             </div>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-sm">${productsHtml}</div>`;
-                container.appendChild(card);
-            });
-        }
-        
-        function reprintSale(saleId) {
-            const saleToReprint = sales.find(s => s.saleId === saleId);
-            if (!saleToReprint) { showNotification("Venta no encontrada.", 'error'); return; }
-            try {
-                const saleData = {
-                    customer: { name: saleToReprint.nombreCliente, contact: saleToReprint.contacto, id: saleToReprint.nitCi },
-                    items: saleToReprint.productosVendidos,
-                    total: parseFloat(saleToReprint.totalVenta)
-                };
-                generateSalePDF(saleId, saleData);
-            } catch (error) {
-                showNotification("No se pudo generar el PDF para esta venta.", 'error');
-            }
-        }
-        
-        function openAnnulConfirmModal(saleId) {
-            saleIdToAnnul = saleId;
-            document.getElementById('annul-modal-text').textContent = `¿Estás seguro de que quieres anular la venta ${saleId}? Esta acción no se puede deshacer.`;
-            document.getElementById('annul-confirm-modal').classList.remove('hidden');
-        }
-
-        async function annulSaleInBackend(saleId) {
-            try {
-                const response = await robustFetch(`${API_BASE_URL}/api/sales/annul`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ data: { saleId: saleId } })
-                });
-                const result = await response.json();
-                if (result.status === 'success') {
-                    showNotification(result.message, 'success');
-                    await Promise.all([fetchSales(), fetchProducts()]);
-                    renderSalesResults();
-                    renderInventoryProducts();
-                } else {
-                    throw new Error(result.message || 'Error desconocido.');
-                }
-            } catch (error) {
-                showNotification(`Error al anular la venta: ${error.message}`, 'error');
-            }
-        }
-        
-        function generateReports(startDate, endDate) {
-            let totalSales = 0, totalCost = 0;
-            const tableBody = document.getElementById('reports-table-body');
-            tableBody.innerHTML = '';
-            let filteredSales = sales.filter(s => s.estado !== 'Anulada');
-            if (startDate && endDate) {
-                const start = new Date(startDate + 'T00:00:00.000Z');
-                const end = new Date(endDate + 'T23:59:59.999Z');
-                filteredSales = filteredSales.filter(s => {
-                    const saleDate = new Date(s.fechaVenta);
-                    return saleDate && saleDate >= start && saleDate <= end;
-                });
-            }
-            filteredSales.forEach(sale => {
-                let saleCost = 0;
-                try {
-                    sale.productosVendidos.forEach(pInSale => {
-                        const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
-                        saleCost += cost * pInSale.cantidad;
-                    });
-                } catch(e) { console.error("Error al procesar productos para reporte:", sale.saleId, e); }
-                const saleTotal = parseFloat(sale.totalVenta) || 0;
-                const profit = saleTotal - saleCost;
-                totalSales += saleTotal;
-                totalCost += saleCost;
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-4 py-3 text-sm text-gray-800">${sale.saleId}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">${new Date(sale.fechaVenta).toLocaleDateString('es-BO')}</td>
-                    <td class="px-4 py-3 text-sm text-right font-medium">Bs ${saleTotal.toFixed(2)}</td>
-                    <td class="px-4 py-3 text-sm text-right text-red-600">Bs ${saleCost.toFixed(2)}</td>
-                    <td class="px-4 py-3 text-sm text-right font-bold text-green-600">Bs ${profit.toFixed(2)}</td>`;
-                tableBody.appendChild(row);
-            });
-            document.getElementById('totalSales').textContent = `Bs ${totalSales.toFixed(2)}`;
-            document.getElementById('totalCost').textContent = `Bs ${totalCost.toFixed(2)}`;
-            document.getElementById('netProfit').textContent = `Bs ${(totalSales - totalCost).toFixed(2)}`;
-        }
-        
-        function generateReportPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            let filteredSales = sales.filter(s => s.estado !== 'Anulada');
-            let dateTitle = "General";
-            if (startDate && endDate) {
-                const start = new Date(startDate + 'T00:00:00.000Z');
-                const end = new Date(endDate + 'T23:59:59.999Z');
-                dateTitle = `del ${start.toLocaleDateString('es-BO', {timeZone: 'UTC'})} al ${end.toLocaleDateString('es-BO', {timeZone: 'UTC'})}`;
-                filteredSales = filteredSales.filter(s => {
-                    const saleDate = new Date(s.fechaVenta);
-                    return saleDate && saleDate >= start && saleDate <= end;
-                });
-            }
-            let totalSales = 0, totalCost = 0;
-            const reportRows = filteredSales.map(sale => {
-                let saleCost = 0;
-                try {
-                    sale.productosVendidos.forEach(pInSale => {
-                        const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
-                        saleCost += cost * pInSale.cantidad;
-                    });
-                } catch(e) {}
-                const saleTotal = parseFloat(sale.totalVenta) || 0;
-                const profit = saleTotal - saleCost;
-                totalSales += saleTotal;
-                totalCost += saleCost;
-                return [sale.saleId, new Date(sale.fechaVenta).toLocaleDateString('es-BO'), `Bs ${saleTotal.toFixed(2)}`, `Bs ${saleCost.toFixed(2)}`, `Bs ${profit.toFixed(2)}`];
-            });
-            const netProfit = totalSales - totalCost;
-            const pageW = doc.internal.pageSize.getWidth();
-            const margin = 14;
-            doc.setFontSize(20);
-            doc.text("Reporte de Ventas - ArelyShop", pageW / 2, margin, { align: 'center' });
-            doc.setFontSize(12);
-            doc.text(dateTitle, pageW / 2, margin + 8, { align: 'center' });
-            const summaryY = margin + 20;
-            doc.setFontSize(12);
-            doc.text("Resumen de Totales:", margin, summaryY);
-            doc.setFontSize(10);
-            doc.text(`Ventas Totales: Bs ${totalSales.toFixed(2)}`, margin, summaryY + 7);
-            doc.text(`Costo Total: Bs ${totalCost.toFixed(2)}`, margin, summaryY + 12);
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'bold');
-            doc.text(`Ganancia Neta: Bs ${netProfit.toFixed(2)}`, margin, summaryY + 18);
-            doc.setFont(undefined, 'normal');
-            doc.autoTable({
-                head: [["Nro. Venta", "Fecha", "Total Venta", "Costo Total", "Ganancia"]],
-                body: reportRows, startY: summaryY + 25, margin: { left: margin, right: margin },
-                headStyles: { fillColor: '#2c3c53', textColor: '#FFFFFF' }
-            });
-            const fileName = `Reporte_Ventas_${dateTitle.replace(/\//g, '-')}.pdf`;
-            doc.save(fileName);
-        }
-
-        // --- UTILITY & SCANNER FUNCTIONS ---
         function copyToClipboard(text, buttonElement) {
             if (!text || text === 'N/A') return;
             const textarea = document.createElement('textarea');
@@ -1251,10 +1189,159 @@
                 document.execCommand('copy');
                 const originalIcon = buttonElement.innerHTML;
                 buttonElement.innerHTML = '¡Copiado!';
-                setTimeout(() => { buttonElement.innerHTML = originalIcon; }, 1500);
-            } catch (err) { showNotification('No se pudo copiar el texto.', 'error'); }
+                setTimeout(() => {
+                    buttonElement.innerHTML = originalIcon;
+                }, 1500);
+            } catch (err) {
+                showNotification('No se pudo copiar el texto.', 'error');
+            }
             document.body.removeChild(textarea);
         }
+
+        function generateReports(startDate, endDate) {
+            let totalSales = 0;
+            let totalCost = 0;
+            const tableBody = document.getElementById('reports-table-body');
+            tableBody.innerHTML = '';
+
+            const parseDate = (dateInput) => {
+                if (!dateInput) return null;
+                let date = new Date(dateInput);
+                if (isNaN(date?.getTime())) return null;
+                return date;
+            };
+
+            let filteredSales = sales.filter(s => s.estado !== 'Anulada');
+
+            if (startDate && endDate) {
+                const start = new Date(startDate + 'T00:00:00.000Z');
+                const end = new Date(endDate + 'T23:59:59.999Z');
+                filteredSales = filteredSales.filter(s => {
+                    const saleDate = parseDate(s.fechaVenta);
+                    return saleDate && saleDate >= start && saleDate <= end;
+                });
+            }
+
+            filteredSales.forEach(sale => {
+                let saleCost = 0;
+                try {
+                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                    const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
+                    saleProducts.forEach(pInSale => {
+                        const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
+                        saleCost += cost * pInSale.cantidad;
+                    });
+                } catch(e) { 
+                    console.error("Error al procesar productos para la venta:", sale.saleId, e);
+                }
+
+                const saleTotal = parseFloat(sale.totalVenta) || 0;
+                const profit = saleTotal - saleCost;
+                totalSales += saleTotal;
+                totalCost += saleCost;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-4 py-3 text-sm text-gray-800">${sale.saleId}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${new Date(sale.fechaVenta).toLocaleDateString('es-BO')}</td>
+                    <td class="px-4 py-3 text-sm text-right font-medium">Bs ${saleTotal.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-sm text-right text-red-600">Bs ${saleCost.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-bold text-green-600">Bs ${profit.toFixed(2)}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            document.getElementById('totalSales').textContent = `Bs ${totalSales.toFixed(2)}`;
+            document.getElementById('totalCost').textContent = `Bs ${totalCost.toFixed(2)}`;
+            document.getElementById('netProfit').textContent = `Bs ${(totalSales - totalCost).toFixed(2)}`;
+        }
+
+        function generateReportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            const parseDate = (dateInput) => {
+                if (!dateInput) return null;
+                let date = new Date(dateInput);
+                if (isNaN(date?.getTime())) return null;
+                return date;
+            };
+
+            let filteredSales = sales.filter(s => s.estado !== 'Anulada');
+            let dateTitle = "General";
+
+            if (startDate && endDate) {
+                const start = new Date(startDate + 'T00:00:00.000Z');
+                const end = new Date(endDate + 'T23:59:59.999Z');
+                dateTitle = `del ${start.toLocaleDateString('es-BO', {timeZone: 'UTC'})} al ${end.toLocaleDateString('es-BO', {timeZone: 'UTC'})}`;
+                filteredSales = filteredSales.filter(s => {
+                    const saleDate = parseDate(s.fechaVenta);
+                    return saleDate && saleDate >= start && saleDate <= end;
+                });
+            }
+            
+            let totalSales = 0, totalCost = 0;
+            const reportRows = filteredSales.map(sale => {
+                let saleCost = 0;
+                try {
+                    // **CORRECCIÓN:** Asegurarse de que `productosVendidos` sea un objeto antes de usarlo.
+                    const saleProducts = typeof sale.productosVendidos === 'string' ? JSON.parse(sale.productosVendidos) : sale.productosVendidos;
+                    saleProducts.forEach(pInSale => {
+                        const cost = parseFloat(pInSale['Precio (Compra)']) || 0;
+                        saleCost += cost * pInSale.cantidad;
+                    });
+                } catch(e) {}
+                
+                const saleTotal = parseFloat(sale.totalVenta) || 0;
+                const profit = saleTotal - saleCost;
+                totalSales += saleTotal;
+                totalCost += saleCost;
+                
+                return [
+                    sale.saleId,
+                    new Date(sale.fechaVenta).toLocaleDateString('es-BO'),
+                    `Bs ${saleTotal.toFixed(2)}`,
+                    `Bs ${saleCost.toFixed(2)}`,
+                    `Bs ${profit.toFixed(2)}`
+                ];
+            });
+            const netProfit = totalSales - totalCost;
+
+            const pageW = doc.internal.pageSize.getWidth();
+            const margin = 14;
+            
+            doc.setFontSize(20);
+            doc.text("Reporte de Ventas - ArelyShop", pageW / 2, margin, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(dateTitle, pageW / 2, margin + 8, { align: 'center' });
+
+            const summaryY = margin + 20;
+            doc.setFontSize(12);
+            doc.text("Resumen de Totales:", margin, summaryY);
+            doc.setFontSize(10);
+            doc.text(`Ventas Totales: Bs ${totalSales.toFixed(2)}`, margin, summaryY + 7);
+            doc.text(`Costo Total: Bs ${totalCost.toFixed(2)}`, margin, summaryY + 12);
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Ganancia Neta: Bs ${netProfit.toFixed(2)}`, margin, summaryY + 18);
+            doc.setFont(undefined, 'normal');
+
+            const tableColumn = ["Nro. Venta", "Fecha", "Total Venta", "Costo Total", "Ganancia"];
+            doc.autoTable({
+                head: [tableColumn],
+                body: reportRows, 
+                startY: summaryY + 25, 
+                margin: { left: margin, right: margin },
+                headStyles: { fillColor: '#2c3c53', textColor: '#FFFFFF' }
+            });
+
+            const fileName = `Reporte_Ventas_${dateTitle.replace(/ /g, '_')}.pdf`;
+            doc.save(fileName);
+        }
+
         function showQrModal() {
             const qrSrc = document.getElementById('pos-qr-code').src;
             if (qrSrc) {
@@ -1262,12 +1349,15 @@
                 document.getElementById('qrCodeModal').classList.remove('hidden');
             }
         }
+
         function startScanner(targetInputId) {
             document.getElementById('scanner-modal').classList.remove('hidden');
+            
             const onScanSuccess = (decodedText, decodedResult) => {
                 const targetInput = document.getElementById(targetInputId);
                 targetInput.value = decodedText;
                 stopScanner();
+
                 if (targetInputId === 'search-product') {
                     const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
                     targetInput.dispatchEvent(enterEvent);
@@ -1276,13 +1366,17 @@
                     targetInput.dispatchEvent(inputEvent);
                 }
             };
+
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
             html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, (error) => {})
                 .catch(err => {
-                    showNotification("No se pudo iniciar la cámara.", 'error');
+                    console.error("No se pudo iniciar el escáner.", err);
+                    showNotification("No se pudo iniciar la cámara. Asegúrate de dar los permisos necesarios.", 'error');
                     stopScanner();
                 });
         }
+
         function stopScanner() {
             if (html5QrCode && html5QrCode.isScanning) {
                 html5QrCode.stop().catch(err => {}).finally(() => {
@@ -1296,4 +1390,4 @@
     </script>
 </body>
 </html>
-```
+
