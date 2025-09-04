@@ -473,8 +473,8 @@
     <!-- Share Modal -->
     <div id="share-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Venta Completada</h3>
-            <p class="text-gray-600 mb-6">El PDF de la nota de venta ha sido generado. ¿Qué deseas hacer?</p>
+            <h3 class="text-xl font-bold text-gray-800 mb-4" id="share-modal-title">Venta Completada</h3>
+            <p class="text-gray-600 mb-6" id="share-modal-text">El PDF de la nota de venta ha sido generado. ¿Qué deseas hacer?</p>
             <div class="space-y-3">
                 <button id="download-pdf-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#FFFFFF" class="mr-2"><path d="m720-120 160-160-56-56-64 64v-167h-80v167l-64-64-56 56 160 160ZM560 0v-80h320V0H560ZM240-160q-33 0-56.5-23.5T160-240v-560q0-33 23.5-56.5T240-880h280l240 240v121h-80v-81H480v-200H240v560h240v80H240Zm0-80v-560 560Z"/></svg>
@@ -953,7 +953,7 @@
                 if (result.status === 'success') {
                     showNotification('Venta registrada con éxito.', 'success');
                     const { pdfBlob, fileName } = generateSalePDF(result.saleId, saleData);
-                    showShareOptions(pdfBlob, fileName);
+                    showShareOptions(pdfBlob, fileName, 'Venta Completada', 'El PDF de la nota de venta ha sido generado. ¿Qué deseas hacer?');
                     
                     await Promise.all([fetchProducts(), fetchSales()]);
 
@@ -1001,11 +1001,12 @@
                 total: cart.reduce((sum, item) => sum + (item.quantity * item.customPrice), 0)
             };
             
-            generateQuotePDF(quoteData);
+            const { pdfBlob, fileName } = generateQuotePDF(quoteData);
+            showShareOptions(pdfBlob, fileName, 'Cotización Generada', 'El PDF de la cotización ha sido generado. ¿Qué deseas hacer?');
         }
 
         function generateQuotePDF(quoteData) {
-            generateDocumentPDF('Cotización', 'Válido por 24hrs.', quoteData, 'Cotizacion');
+            return generateDocumentPDF('Cotización', 'Válido por 24hrs.', quoteData, 'Cotizacion');
         }
 
         function generateDocumentPDF(docType, docIdentifier, data, filePrefix = 'Nota_Venta') {
@@ -1097,11 +1098,6 @@
                 fileName = `${filePrefix}_${saleId}_${customerName}.pdf`;
             } else {
                 fileName = `${filePrefix}_${customerName}.pdf`;
-            }
-            
-            if (filePrefix === 'Cotizacion') {
-                 doc.save(fileName);
-                 return;
             }
             
             const pdfBlob = doc.output('blob');
@@ -1226,7 +1222,7 @@
                     total: parseFloat(saleToReprint.totalVenta)
                 };
                 const { pdfBlob, fileName } = generateSalePDF(saleId, saleData);
-                showShareOptions(pdfBlob, fileName);
+                showShareOptions(pdfBlob, fileName, 'Reimprimir Nota de Venta', 'El PDF de la nota de venta ha sido generado. ¿Qué deseas hacer?');
             } catch (error) {
                 console.error("Error preparando data para PDF reprint:", error);
                 showNotification("No se pudo generar el PDF para esta venta.", 'error');
@@ -1505,14 +1501,19 @@
             }
         }
         
-        function showShareOptions(pdfBlob, fileName) {
+        function showShareOptions(pdfBlob, fileName, title, text) {
             currentPdfBlob = pdfBlob;
             currentPdfFileName = fileName;
 
             const modal = document.getElementById('share-modal');
+            const modalTitle = document.getElementById('share-modal-title');
+            const modalText = document.getElementById('share-modal-text');
             const shareBtn = document.getElementById('share-pdf-btn');
             const downloadBtn = document.getElementById('download-pdf-btn');
             const closeModalBtn = document.getElementById('close-share-modal');
+
+            modalTitle.textContent = title;
+            modalText.textContent = text;
 
             const dataToShare = { files: [new File([currentPdfBlob], currentPdfFileName, { type: 'application/pdf' })] };
             if (navigator.share && navigator.canShare && navigator.canShare(dataToShare)) {
@@ -1538,8 +1539,8 @@
                     const file = new File([currentPdfBlob], currentPdfFileName, { type: 'application/pdf' });
                     await navigator.share({
                         files: [file],
-                        title: `Nota de Venta: ${currentPdfFileName}`,
-                        text: 'Gracias por tu compra en ArelyShop.',
+                        title: `Documento: ${currentPdfFileName}`,
+                        text: 'Documento generado desde el sistema ArelyShop.',
                     });
                 } catch (error) {
                     console.error('Error al compartir:', error);
