@@ -855,12 +855,27 @@
         }
 
         function addToCart(product) {
-            const existingCartItem = cart.find(item => item.sku === product.sku && item.nombre === product.nombre);
-            if (existingCartItem) {
-                existingCartItem.quantity++;
-            } else {
-                cart.push({ ...product, quantity: 1, customPrice: parseFloat(product.precioVenta) });
+            const latestProductInfo = products.find(p => p.sku === product.sku && p.nombre === product.nombre);
+            
+            if (!latestProductInfo || latestProductInfo.cantidad <= 0) {
+                showNotification('Este producto no tiene stock disponible.', 'error');
+                document.getElementById('search-product').value = '';
+                document.getElementById('search-results').classList.add('hidden');
+                return;
             }
+
+            const existingCartItem = cart.find(item => item.sku === product.sku && item.nombre === product.nombre);
+
+            if (existingCartItem) {
+                if (existingCartItem.quantity < latestProductInfo.cantidad) {
+                    existingCartItem.quantity++;
+                } else {
+                    showNotification(`No se puede añadir más. Stock máximo: ${latestProductInfo.cantidad}`, 'error');
+                }
+            } else {
+                cart.push({ ...latestProductInfo, quantity: 1, customPrice: parseFloat(latestProductInfo.precioVenta) });
+            }
+            
             document.getElementById('search-product').value = '';
             document.getElementById('search-results').classList.add('hidden');
             renderCart();
@@ -900,12 +915,26 @@
         }
 
         function setQuantity(index, newQuantity) {
-            const quantity = parseInt(newQuantity);
-            if (!isNaN(quantity) && quantity > 0) {
-                cart[index].quantity = quantity;
-            } else {
-                cart[index].quantity = 1;
+            const cartItem = cart[index];
+            const productInStock = products.find(p => p.sku === cartItem.sku && p.nombre === cartItem.nombre);
+            const maxStock = productInStock ? productInStock.cantidad : 0;
+            
+            let quantity = parseInt(newQuantity);
+
+            if (isNaN(quantity) || quantity < 1) {
+                quantity = 1;
             }
+
+            if (quantity > maxStock) {
+                showNotification(`Stock insuficiente. Máximo disponible: ${maxStock}`, 'error');
+                cart[index].quantity = maxStock;
+                if (maxStock === 0) {
+                     cart.splice(index, 1);
+                }
+            } else {
+                cart[index].quantity = quantity;
+            }
+
             renderCart();
         }
 
@@ -1597,3 +1626,4 @@
     </script>
 </body>
 </html>
+
