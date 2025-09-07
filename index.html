@@ -571,6 +571,28 @@
                 document.getElementById('user-fullname').textContent = user.fullName || 'Usuario';
                 document.getElementById('user-role').textContent = user.role || 'Rol';
                 
+                // --- Role-based Tab Visibility ---
+                const isAdmin = user.role === 'admin';
+                document.getElementById('tab-inventory').style.display = isAdmin ? 'flex' : 'none';
+                document.getElementById('tab-reports').style.display = isAdmin ? 'flex' : 'none';
+                
+                // Ensure a visible tab is active if the previously active one is now hidden
+                const activeTab = document.querySelector('.tab-active');
+                if (!isAdmin && activeTab && (activeTab.id === 'tab-inventory' || activeTab.id === 'tab-reports')) {
+                     document.querySelectorAll('.tab-button').forEach(t => {
+                        t.classList.remove('tab-active');
+                        t.classList.add('tab-inactive');
+                     });
+                     document.querySelectorAll('.tab-content').forEach(c => {
+                        c.style.display = 'none';
+                     });
+                     
+                    // Activate POS tab by default for non-admins
+                    document.getElementById('tab-pos').classList.add('tab-active');
+                    document.getElementById('tab-pos').classList.remove('tab-inactive');
+                    document.getElementById('content-pos').style.display = 'block';
+                }
+
                 initializeApp();
             } else {
                 loginContainer.classList.remove('hidden');
@@ -585,6 +607,11 @@
             products = [];
             sales = [];
             cart = [];
+            
+            // Reset tab visibility to default before showing login screen
+            document.getElementById('tab-inventory').style.display = 'flex';
+            document.getElementById('tab-reports').style.display = 'flex';
+
             checkAuth();
         }
 
@@ -1626,4 +1653,3 @@
     </script>
 </body>
 </html>
-
